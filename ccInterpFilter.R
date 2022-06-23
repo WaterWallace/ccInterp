@@ -101,7 +101,6 @@ library(pracma)
 # outputInt is the new time interval required, i.e. hourly, being 1/24 days.
 spinterpConvert <- function(start, rate, outputInt=(1/24), type="spinterp", dt=2)
 {
-  
   # inputs must be stepped averages (default, dt = 2)
   # If point data is used (not preferred as precision can be lost), set dt = 1
   
@@ -133,6 +132,10 @@ spinterpConvert <- function(start, rate, outputInt=(1/24), type="spinterp", dt=2
     means$avg <- (means$rate+means$rate2)/2
     start <- means$start
     rate <- means$avg
+  }
+  if (dt==3) # mean, average flow until this point
+  {
+    start <- start - (start[2] - start[1])
   }
   
   start <- as.numeric(start)
