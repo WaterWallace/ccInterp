@@ -251,7 +251,7 @@ spinterpConvert <- function(start, rate, outputInt=(1/24), type="spinterp", dt=2
 changeInterval <- function(ts, dt=1, Interval="Daily", start=0, end=0, offset=0, option="fmean", rounded=TRUE)
 {
   
-  inputts <- ts[,1:2]
+  inputts <- ts
   
   #function omits na's, so will interpolate between
   ts <- na.omit(ts)
