@@ -13,11 +13,15 @@
 
 maxminfun <- function(refx, refy, newts, option="max", dt=2)
 {
+
+  originalnewts <- newts
+  newts <- as.data.frame(newts)
+  #newts[1]
   #newts <- spinterpData$Date
   #qcdata <- maxminfun(ts$Timestamp, ts$QC, , dt=1 )
   if (dt==1)
   {
-    subtract <- (newts[2] -newts[1])/2
+    subtract <- (newts[2,1] -newts[1,1])/2
     #newts<- as.numeric(newts)
     #shift the target timeseries back by half an interval
     # function assumes default dt of 2, which is forward means.
@@ -43,7 +47,8 @@ maxminfun <- function(refx, refy, newts, option="max", dt=2)
   }
   
   oldts <- data.frame(refx, refy)
-  newts <- data.frame(Timestamp = newts)
+  #newts <- data.frame(Timestamp = newts ) # why did I add this?
+  #colnames(newts)[1]
   
   # Function of hourly hours 
   f.hourlyHours <- approxfun(newts[,1], newts[,1], method="constant")
@@ -57,7 +62,7 @@ maxminfun <- function(refx, refy, newts, option="max", dt=2)
   
   if (dt==1)
   {
-    newts$Timestamp <- newts$Timestamp + subtract
+    newts[,1] <-  newts[,1]  + subtract
   }
   
   return(newts)
@@ -250,7 +255,7 @@ spinterpConvert <- function(start, rate, outputInt=(1/24), type="spinterp", dt=2
 
 changeInterval <- function(ts, dt=1, Interval="Daily", start=0, end=0, offset=0, option="fmean", rounded=TRUE)
 {
-  
+ 
   inputts <- ts
   
   #function omits na's, so will interpolate between
