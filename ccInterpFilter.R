@@ -12,8 +12,13 @@
 # or a daily minimum value
 
 maxminfun <- function(refx, refy, newts, option="max", dt=2)
-{
-
+{ 
+  #refx <- ts$Timestamp
+  #refy <- ts$QC
+  #newts <- spinterpData$Date
+  #dt=1
+  #option <- "max"
+  
   originalnewts <- newts
   newts <- as.data.frame(newts)
   #newts[1]
@@ -25,7 +30,7 @@ maxminfun <- function(refx, refy, newts, option="max", dt=2)
     #newts<- as.numeric(newts)
     #shift the target timeseries back by half an interval
     # function assumes default dt of 2, which is forward means.
-    newts <- newts - (subtract )
+    newts[,1] <- newts[,1] - (subtract )
   }
   
   #refx - reference x lookup
