@@ -310,20 +310,25 @@ changeInterval <- function(ts, dt=1, Interval="Daily", start=0, end=0, offset=0,
   if (dt==2)
   {
     # means
-    ts$megalitres <- ts$dur*ts[,2]/1000
+    kilolitres <- ts$dur*ts[,2] # multiply duration in seconds by cubic metres per second, to equal total cubic metres (kilolitres)
+    ts$megalitres <- kilolitres/1000 # divide by 1000 to equal total megalitres
   }
   if (dt==1)
   {
+    # for forward mean data 
+
+    # same as above, except getting the average of 
     # point data, or interval data (means, with value at centre point)
-    v <- c(ts$dur,0) * c(ts[,2],0) + c(ts$dur,0) *  c(0,ts[,2])
-    v <- v/2
-    v <- head(v,-1)
+    averageRate <- ( 0.5 * ( c(ts[,2],0) + c(0,ts[,2]) ) )
+    kilolitres <- c(ts$dur,0) *  averageRate # duration in seconds times average of timeseries values in rate per second
+    kilolitres <- head(kilolitres,-1)
     
-    ts$megalitres <- v/1000
+    ts$megalitres <- kilolitres/1000
   }
   
   # cumulative sum
   ts$accum <- cumsum(ts$megalitres)
+  #plot(ts$x, ts$accum)
   
   # cumulative sum lookup function
   f.accum <- splinefun(ts[,1], ts$accum)
@@ -342,7 +347,7 @@ changeInterval <- function(ts, dt=1, Interval="Daily", start=0, end=0, offset=0,
   dy <-  c(diff(f.accum(newintTS) ),0 ) 
   # delta y / delta time
   if(option=="fmean"){
-    df <- data.frame(Date=newintTS, FMean = round(dy/(timestep/1000),3))
+    df <- data.frame(Date=newintTS, FMean = round(dy/(timestep/1000),3)) # convert back from ML/day to cumecs
   }else if(option=="sum")
   {
     # output total difference in cumulative 
