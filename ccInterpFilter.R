@@ -13,17 +13,9 @@
 
 maxminfun <- function(refx, refy, newts, option="max", dt=2)
 { 
-  #refx <- ts$Timestamp
-  #refy <- ts$QC
-  #newts <- spinterpData$Date
-  #dt=1
-  #option <- "max"
-  
+
   originalnewts <- newts
   newts <- as.data.frame(newts)
-  #newts[1]
-  #newts <- spinterpData$Date
-  #qcdata <- maxminfun(ts$Timestamp, ts$QC, , dt=1 )
   if (dt==1)
   {
     subtract <- (newts[2,1] -newts[1,1])/2
@@ -111,6 +103,7 @@ library(pracma)
 # outputInt is the new time interval required, i.e. hourly, being 1/24 days.
 spinterpConvert <- function(start, rate, outputInt=(1/24), type="spinterp", dt=2)
 {
+
   # inputs must be stepped averages (default, dt = 2)
   # If point data is used (not preferred as precision can be lost), set dt = 1
   
@@ -125,7 +118,6 @@ spinterpConvert <- function(start, rate, outputInt=(1/24), type="spinterp", dt=2
   # time in days
   
   # spinterpConvert simply gets the derivative of the cumulative discharge
-  
   
   if (dt==1)# if data is of point type, convert to an interval mean at from start point to end point
   {
@@ -147,6 +139,7 @@ spinterpConvert <- function(start, rate, outputInt=(1/24), type="spinterp", dt=2
   {
     start <- start - (start[2] - start[1])
   }
+  
   
   start <- as.numeric(start)
   nt <- length(start)
@@ -260,28 +253,32 @@ spinterpConvert <- function(start, rate, outputInt=(1/24), type="spinterp", dt=2
 
 changeInterval <- function(ts, dt=1, Interval="Daily", start=0, end=0, offset=0, option="fmean", rounded=TRUE)
 {
- 
+
   inputts <- ts
   
   #function omits na's, so will interpolate between
   ts <- na.omit(ts)
   ts <- ts[,1:2]
 
-  
+  cullBefore = ts[1,1]
   if (start==0)
   {
     if (Interval == "Daily")
     {
       # round to full day
+      #if (ts[1,1] >  round(ts[1,1], units="days") ) cullBefore = ts[1,1]
       start <- round(ts[1,1], units="days")
+      
     }else if (Interval == "Hourly")
     {
+      #if (ts[1,1] >  round(ts[1,1], units="days") ) cullBefore = ts[1,1]
       # round to full hour
       start <- round(ts[1,1], units="hours")
     }else{
       # start at raw value
       
       if (rounded == TRUE){
+        #if (ts[1,1] >  round(ts[1,1], units="days") ) cullBefore = ts[1,1]
         start <- round(ts[1,1], units="hours")
       }else{
         start <- ts[1,1]
@@ -300,11 +297,8 @@ changeInterval <- function(ts, dt=1, Interval="Daily", start=0, end=0, offset=0,
     end <- as.POSIXct(end, origin="1970-01-01")
   }
   
-  
-  
   #duration between this point and the previous point
   ts$dur <- c(0,diff(as.numeric(ts[,1] ) ) )  #duration in seconds
-  
   
   # calculate a volume
   if (dt==2)
@@ -328,11 +322,11 @@ changeInterval <- function(ts, dt=1, Interval="Daily", start=0, end=0, offset=0,
   
   # cumulative sum
   ts$accum <- cumsum(ts$megalitres)
-  #plot(ts$x, ts$accum)
   
   # cumulative sum lookup function
   f.accum <- splinefun(ts[,1], ts$accum)
   
+  #plot(ts$t, ts$megalitres)
   
   # set time step based on interval
   if (Interval == "Daily"){ timestep = 24*60*60}else 
@@ -351,7 +345,8 @@ changeInterval <- function(ts, dt=1, Interval="Daily", start=0, end=0, offset=0,
   }else if(option=="sum")
   {
     # output total difference in cumulative 
-    df <- data.frame(Date=newintTS, Sum = round(dy,3) )
+    # convert back to KL i.e. cubic metres
+    df <- data.frame(Date=newintTS, Sum = round(f.accum(newintTS)*1000 ,3))
   }else if(option=="inst")
   {
     #add half a timestep to report an instantaneous mean
@@ -363,11 +358,13 @@ changeInterval <- function(ts, dt=1, Interval="Daily", start=0, end=0, offset=0,
     df <- maxminfun(inputts[,1], inputts[,3], df, option="max" )
   }
   
+  # tidy up
+  df <- df[df[,1] >= cullBefore, ]
+  df <- head(df,-1) # remove redundant zero value added as dy
   df <- na.trim(df)
   return(df)
   
   
-  #plot(df$Date, df$cumecs)
   
 }
 
@@ -386,27 +383,35 @@ library(zoo)
 
 # requires spinterpConvert and changeInterval
 
+
 ccInterpFilter <- function(ts, hours = 24, discardbelowzero = FALSE, centred = FALSE, type="spinterp")
 {
+  
+  # Trim times up, won't use part hours
+  roundedtime <- round(ts[1,1] , units="hours")+1*60*60
+  f.round <- approxfun(ts[,1], ts[,2])
+  startvalue <- f.round(roundedtime)
+  df <- data.frame(t = roundedtime, startvalue )
+  colnames(df) <- colnames(ts)
+  ts <- rbind(df, ts)
+  
   # converts time series to daily, and cumulates, interpolates, and then gets the derivative.
   # does this for each hour, i.e. for 24 hour averaging it will do it 24 times offset an hour each time
   # the result is the average of all hours interpolated.
   
   # ts = dataframe of posixct time, and a value.
   
-  #ccInterpFilter(tsdf, 24, centred=FALSE)
-  #ts <- tsdf
-  #hours <- 24
-  #centred <- FALSE
-  #discardbelowzero = FALSE
-  #type="spinterp"
+  changeInterval(ts, Interval=hours*60, offset=1*60)
   
   spinterpData <- 0 #initialize
   
   #Loop through all daily interpolations
   for(i in 0:(hours-1))
   {
+    #i <- 1
     #print(i)
+    head(ts)
+    #tail(ts)
     # for each 24 hour interpolation, increment the offset by an hour each time
     daily <- changeInterval(ts, Interval=hours*60, offset=i*60)
     offset <- 0
@@ -463,8 +468,6 @@ ccInterpFilter <- function(ts, hours = 24, discardbelowzero = FALSE, centred = F
   spinterpData$Date <- as.POSIXct(spinterpData$Date*60*60*24, origin="1970-01-01")
   return(spinterpData)
 }
-
-
 
 
 ###################################################################
