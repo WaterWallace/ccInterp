@@ -412,8 +412,6 @@ library(zoo)
 
 # requires spinterpConvert and changeInterval
 
-cci <- ccInterpFilter(data.frame(time=MRDQ$time, q=MRDQ$value_Discharge))
-head(MRDQ)
 
 ccInterpFilter <- function(ts, hours = 24, discardbelowzero = FALSE, centred = FALSE, type="spinterp")
 {
