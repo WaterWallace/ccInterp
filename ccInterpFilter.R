@@ -251,15 +251,17 @@ spinterpConvert <- function(start, rate, outputInt=(1/24), type="spinterp", dt=2
 # sum will calculate the total change from the beginning of the period to the end of the period
 
 
-changeInterval <- function(ts, dt=1, Interval="Daily", start=0, end=0, offset=0, option="fmean", rounded=TRUE)
+changeInterval <- function(ts, dt=1, Interval="Daily", start=0, end=0, offset=0, option="fmean", linearInterp = TRUE, rounded=TRUE)
 {
-
+  
+  # ts <- inputts
+  #Interval <- "Hourly" 
   inputts <- ts
   
   #function omits na's, so will interpolate between
   ts <- na.omit(ts)
   ts <- ts[,1:2]
-
+  
   cullBefore = ts[1,1]
   if (start==0)
   {
@@ -297,8 +299,40 @@ changeInterval <- function(ts, dt=1, Interval="Daily", start=0, end=0, offset=0,
     end <- as.POSIXct(end, origin="1970-01-01")
   }
   
+  
+  
+  
+  
+  # set time step based on interval
+  if (Interval == "Daily"){ timestep = 24*60*60}else 
+    if (Interval == "Hourly"){ timestep = 1*60*60}else{
+      # assume an integer
+      timestep = Interval*60}
+  
+  
+  
+  
+  if (linearInterp)
+  {
+    # add new points at timestamp boundaries
+    newintTS <- seq(start+offset*60, end, by= timestep )
+    f.timeties <- approxfun(ts[,1], ts[,2])
+    lineardf <- data.frame(newintTS, f.timeties(newintTS) )
+    #plot(lineardf)
+    # merge lineardf and ts
+    names(lineardf) <- names(ts)
+    merged <- rbind(lineardf, ts)
+    merged <- merged[order(merged[,1]),]
+    ts <- na.omit(distinct(merged))
+  }
+  
+  
+  
   #duration between this point and the previous point
   ts$dur <- c(0,diff(as.numeric(ts[,1] ) ) )  #duration in seconds
+  
+  
+  
   
   # calculate a volume
   if (dt==2)
@@ -310,7 +344,7 @@ changeInterval <- function(ts, dt=1, Interval="Daily", start=0, end=0, offset=0,
   if (dt==1)
   {
     # for forward mean data 
-
+    
     # same as above, except getting the average of 
     # point data, or interval data (means, with value at centre point)
     averageRate <- ( 0.5 * ( c(ts[,2],0) + c(0,ts[,2]) ) )
@@ -323,22 +357,25 @@ changeInterval <- function(ts, dt=1, Interval="Daily", start=0, end=0, offset=0,
   # cumulative sum
   ts$accum <- cumsum(ts$megalitres)
   
-  # cumulative sum lookup function
-  f.accum <- splinefun(ts[,1], ts$accum)
   
-  #plot(ts$t, ts$megalitres)
+  f.linear <- approxfun(ts[,1], ts$accum)
+  f.accum <- splinefun(ts[,1], ts$accum, method="fmm")
   
-  # set time step based on interval
-  if (Interval == "Daily"){ timestep = 24*60*60}else 
-    if (Interval == "Hourly"){ timestep = 1*60*60}else{
-    # assume an integer
-      timestep = Interval*60}
   
   # new time sequence for new interval
   newintTS <- seq(start+offset*60, end, by= timestep )
   
   # delta y
-  dy <-  c(diff(f.accum(newintTS) ),0 ) 
+  if (linearInterp)
+  {
+    newTS <- f.linear(newintTS)
+  }else{
+    newTS <- f.accum(newintTS)
+  }
+  
+  dy <-  c(diff(newTS),0 ) 
+  
+  
   # delta y / delta time
   if(option=="fmean"){
     df <- data.frame(Date=newintTS, FMean = round(dy/(timestep/1000),3)) # convert back from ML/day to cumecs
@@ -346,7 +383,8 @@ changeInterval <- function(ts, dt=1, Interval="Daily", start=0, end=0, offset=0,
   {
     # output total difference in cumulative 
     # convert back to KL i.e. cubic metres
-    df <- data.frame(Date=newintTS, Sum = round(f.accum(newintTS)*1000 ,3))
+    df <- data.frame(Date=newintTS, Sum = round(newTS*1000 ,3))
+    
   }else if(option=="inst")
   {
     #add half a timestep to report an instantaneous mean
@@ -362,9 +400,6 @@ changeInterval <- function(ts, dt=1, Interval="Daily", start=0, end=0, offset=0,
   df <- df[df[,1] >= cullBefore, ]
   df <- head(df,-1) # remove redundant zero value added as dy
   df <- na.trim(df)
-  return(df)
-  
-  
   
 }
 
