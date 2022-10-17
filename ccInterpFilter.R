@@ -258,10 +258,6 @@ changeInterval <- function(ts, dt=1, Interval="Daily", start=0, end=0, offset=0,
   #Interval <- "Hourly" 
   inputts <- ts
   
-  Interval <- 1
-  start <- 0
-  end <- 0
-  
   #function omits na's, so will interpolate between
   ts <- na.omit(ts)
   ts <- ts[,1:2]
