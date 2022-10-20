@@ -422,14 +422,28 @@ library(zoo)
 ccInterpFilter <- function(ts, hours = 24, discardbelowzero = FALSE, centred = FALSE, type="spinterp")
 {
   
-  # Trim times up, won't use part hours
-  roundedtime <- round(ts[1,1] , units="hours")+1*60*60
-  f.round <- approxfun(ts[,1], ts[,2])
-  startvalue <- f.round(roundedtime)
-  df <- data.frame(t = roundedtime, startvalue )
-  colnames(df) <- colnames(ts)
-  ts <- rbind(df, ts)
+  # ts <- tsdf
+  #hours <- 24
+  #discardbelowzero <- FALSE
+  #centred <- FALSE
+  #type <- "spinterp"
   
+  # Trim times up, won't use part hours
+  if(round(ts[1,1] , units="hours") < ts[1,1])
+  {
+    roundedtime <- round(ts[1,1] , units="hours")+1*60*60 # add an hour to the rounded down (why can't I just round up?)
+    f.round <- approxfun(ts[,1], ts[,2])
+    startvalue <- f.round(roundedtime) # just interpolates the first timestamp on the hour
+    if (length(ts)>2) 
+    {
+      df <- data.frame(t = roundedtime, startvalue, ts[1,3] )
+    }else
+    {
+      df <- data.frame(t = roundedtime, startvalue )
+    }
+    colnames(df) <- colnames(ts)
+    ts <- rbind(df, ts)
+  }
   # converts time series to daily, and cumulates, interpolates, and then gets the derivative.
   # does this for each hour, i.e. for 24 hour averaging it will do it 24 times offset an hour each time
   # the result is the average of all hours interpolated.
@@ -521,7 +535,7 @@ lines(ts, f.D(ts), ylim=c(0,450) )
 # upsample to hourly 
 # default = spinterp
 DHourly <- spinterpConvert(D$x, D$y)
-lines(DHourly, col="red")
+lines(DHourly, col="blue")
 
 # type = spline
 DHourly <- spinterpConvert(D$x, D$y, type = "spline")
@@ -625,9 +639,35 @@ lines(spinterpConfi$spinterpData.Date, spinterpConfi$lower)
 
 #dygraph(spinterpConfi)
 
+#
+if(1==0)
+{
 
 #############################################
 # Validation
+#
+# rm(PagendamPercivalSyntheticData)
+# http://dx.doi.org/10.4225/08/543B4B1A57C33
+# 
+##############################################
+
+modeleval <- read.csv("C:/Users/wallacesw/Documents/R/Pagendam/tabularData.csv")
+modeleval$timeStamp <- as.POSIXct(modeleval$timeStamp)
+
+plot(modeleval$timeStamp, modeleval$Raw)
+
+nrow(modeleval)
+cci <- ccInterpFilter(data.frame(modeleval$timeStamp, modeleval$Raw))
+
+
+plot(modeleval$timeStamp, modeleval$Raw)
+lines(cci$Date, cci$avg, col="blue")
+lines(modeleval$timeStamp, modeleval$RoHAKS, col="red")
+
+plot(data.frame(modeleval$timeStamp, modeleval$Raw))
+
+#############################################
+# Validation (none of this should work, the data doesn't add up)
 #
 # rm(PagendamPercivalSyntheticData)
 # http://dx.doi.org/10.4225/08/543B4B1A57C33
@@ -857,4 +897,7 @@ sum(biasRemoved$Actual)
 
 
 #WQI::EIO_Node(APIKEY = api)
+
+
+}
 
