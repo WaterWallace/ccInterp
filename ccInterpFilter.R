@@ -429,6 +429,7 @@ ccInterpFilter <- function(ts, hours = 24, discardbelowzero = FALSE, centred = F
   #type <- "spinterp"
   
   # Trim times up, won't use part hours
+  # (I don't like this, way too many lines to just chop the top few lines below a time)
   if(round(ts[1,1] , units="hours") < ts[1,1])
   {
     roundedtime <- round(ts[1,1] , units="hours")+1*60*60 # add an hour to the rounded down (why can't I just round up?)
