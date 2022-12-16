@@ -1,13 +1,17 @@
 Package: ccInterp
 Type: Package
 Title: Combined Cumulative Interpolation Filter
-Version: 0.1.0
+Version: 0.1.1
 Author: Stephen Wallace
 Maintainer: Stephen Wallace <stephen.wallace@des.qld.gov.au>
 Description: Filters a source timeseries to remove noise/tides/etc
     Output data as Hourly.
-License: CC0 1.0 Universal
+License: GPL-2
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 7.1.2
-Imports: dplyr, zoo, pracma
+RoxygenNote: 7.2.2
+Imports: dplyr, zoo, pracma, schumaker
+Suggests: matrixStats
+NeedsCompilation: no
+Packaged: 2022-12-06 07:41:56 UTC; Bill
+Depends: R (>= 4.2.0)

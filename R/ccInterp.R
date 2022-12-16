@@ -10,3 +10,31 @@
 #'
 #' @name ccInterp
 NULL
+
+#' @import dplyr
+#' @import zoo
+#' @import pracma
+#' @import schumaker
+NULL
+
+#' Xy data
+#'
+#' An data set used in the examples
+#'
+#' A data set of 457 rows and 2 columns
+#' \describe{
+#'   \item{x}{A numeric vector}
+#'   \item{y}{A numeric vector}
+#' }
+"xy_data"
+
+#' Xy2 data
+#'
+#' An data set used in the examples
+#'
+#' A data set of 457 rows and 2 columns
+#' \describe{
+#'   \item{x}{A numeric vector}
+#'   \item{y}{A numeric vector}
+#' }
+"xy2_data"

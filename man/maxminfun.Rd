@@ -31,23 +31,22 @@ or a daily minimum value
 }
 \examples{
 
-longts <- seq( 0, 500, by=1 )
+longts <- seq(0, 500, by = 1)
 # create a random timeseries
 randts <- runif(length(longts), min = 0, max = 1000)
 
 plot(longts, randts)
-lines(longts, randts, col="grey")
+lines(longts, randts, col = "grey")
 
 # new interval timeseries
-intervalts <- seq( 0, 500, by=20 )
+intervalts <- seq(0, 500, by = 20)
 
 intervalMax <- maxminfun(longts, randts, intervalts)
-f.max <- approxfun(intervalMax, method="constant")
-lines(  f.max(longts), col="red" )
+f.max <- approxfun(intervalMax, method = "constant")
+lines(f.max(longts), col = "red")
 
-intervalMin <- maxminfun(longts, randts, intervalts, option="min")
-f.min <- approxfun(intervalMin, method="constant")
-lines(  f.min(longts), col="red" )
-
+intervalMin <- maxminfun(longts, randts, intervalts, option = "min")
+f.min <- approxfun(intervalMin, method = "constant")
+lines(f.min(longts), col = "red")
 
 }

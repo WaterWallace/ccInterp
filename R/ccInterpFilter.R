@@ -16,65 +16,58 @@
 #' @return  dataframe with timestamp as posixct a trapezoidal integrated rate and quality code if included.
 #'
 #' @examples
-#'D  <- data.frame(
-#'x = c(17151.61,17151.62,17151.63,17151.64,17151.65,17151.66,17151.67,17151.69,17151.7,17151.71,17151.72,17151.73,17151.74,17151.75,17151.76,17151.77,17152.07,17152.08,17152.09,17152.1,17152.11,17152.12,17152.13,17152.14,17152.15,17152.16,17152.17,17152.19,17152.2,17152.21,17152.22,17152.23,17152.24,17152.25,17152.26,17152.27,17152.28,17152.29,17152.3,17152.31,17152.32,17152.33,17152.34,17152.64,17152.65,17152.66,17152.67,17152.69,17152.7,17152.71,17152.72,17152.73,17152.74,17152.75,17152.76,17152.77,17152.78,17152.79,17152.8,17153.11,17153.12,17153.13,17153.14,17153.15,17153.16,17153.17,17153.19,17153.2,17153.21,17153.22,17153.23,17153.24,17153.25,17153.26,17153.27,17153.28,17153.29,17153.3,17153.31,17153.32,17153.33,17153.34,17153.35,17153.36,17153.69,17153.7,17153.71,17153.72,17153.73,17153.74,17153.75,17153.76,17153.77,17153.78,17153.79,17153.8,17153.81,17153.82,17153.83,17154.13,17154.14,17154.15,17154.16,17154.17,17154.19,17154.2,17154.21,17154.22,17154.23,17154.24,17154.25,17154.26,17154.27,17154.28,17154.29,17154.3,17154.31,17154.32,17154.33,17154.34,17154.35,17154.36,17154.37,17154.38,17154.39,17154.4,17154.72,17154.73,17154.74,17154.75,17154.76,17154.77,17154.78,17154.79,17154.8,17154.81,17154.82,17154.83,17154.84,17154.85,17154.86,17154.87,17154.88,17154.89,17155.17,17155.19,17155.2,17155.21,17155.22,17155.23,17155.24,17155.25,17155.26,17155.27,17155.28,17155.29,17155.3,17155.31,17155.32,17155.33,17155.34,17155.35,17155.36,17155.37,17155.38,17155.39,17155.4,17155.41,17155.42,17155.44,17155.77,17155.78,17155.79,17155.8,17155.81,17155.82,17155.83,17155.84,17155.85,17155.86,17155.87,17155.88,17155.89,17155.9,17155.91,17155.92,17155.94,17155.95,17156.24,17156.25,17156.26,17156.27,17156.28,17156.29,17156.3,17156.31,17156.32,17156.33,17156.34,17156.35,17156.36,17156.37,17156.38,17156.39,17156.4,17156.41,17156.42,17156.44,17156.45,17156.46,17156.47,17156.81,17156.82,17156.83,17156.84,17156.85,17156.86,17156.87,17156.88,17156.89,17156.9,17156.91,17156.92,17156.94,17156.95,17156.96,17156.97,17156.98,17156.99,17157,17157.29,17157.3,17157.31,17157.32,17157.33,17157.34,17157.35,17157.36,17157.37,17157.38,17157.39,17157.4,17157.41,17157.42,17157.44,17157.45,17157.46,17157.47,17157.48,17157.49,17157.5,17157.51,17157.84,17157.85,17157.86,17157.87,17157.88,17157.89,17157.9,17157.91,17157.92,17157.94,17157.95,17157.96,17157.97,17157.98,17157.99,17158,17158.01,17158.02,17158.03,17158.04,17158.05,17158.06,17158.33,17158.34,17158.35,17158.36,17158.37,17158.38,17158.39,17158.4,17158.41,17158.42,17158.44,17158.45,17158.46,17158.47,17158.48,17158.49,17158.5,17158.51,17158.52,17158.53,17158.54,17158.86,17158.87,17158.88,17158.89,17158.9,17158.91,17158.92,17158.94,17158.95,17158.96,17158.97,17158.98,17158.99,17159,17159.01,17159.02,17159.03,17159.04,17159.05,17159.06,17159.07,17159.08,17159.09,17159.36,17159.37,17159.38,17159.39,17159.4,17159.41,17159.42,17159.44,17159.45,17159.46,17159.47,17159.48,17159.49,17159.5,17159.51,17159.52,17159.53,17159.54,17159.55,17159.56,17159.57,17159.88,17159.89,17159.9,17159.91,17159.92,17159.94,17159.95,17159.96,17159.97,17159.98,17159.99,17160,17160.01,17160.02,17160.03,17160.04,17160.05,17160.06,17160.07,17160.08,17160.09,17160.1,17160.11,17160.12,17160.4,17160.41,17160.42,17160.44,17160.45,17160.46,17160.47,17160.48,17160.49,17160.5,17160.51,17160.52,17160.53,17160.54,17160.55,17160.56,17160.57,17160.58,17160.59,17160.9,17160.91,17160.92,17160.94,17160.95,17160.96,17160.97,17160.98,17160.99,17161,17161.01,17161.02,17161.03,17161.04,17161.05,17161.06,17161.07,17161.08,17161.09,17161.1,17161.11,17161.12,17161.13,17161.14,17161.15,17161.42,17161.44,17161.45,17161.46,17161.47,17161.48,17161.49,17161.5,17161.51,17161.52,17161.53,17161.54,17161.55,17161.56,17161.57,17161.58,17161.59,17161.6,17161.61,17161.62,17161.92,17161.94,17161.95,17161.96,17161.97,17161.98,17161.99,17162,17162.01,17162.02,17162.03,17162.04,17162.05,17162.06,17162.07,17162.08,17162.09,17162.1,17162.11,17162.12,17162.13,17162.14,17162.15,17162.16,17162.17,17162.19,17162.45,17162.46,17162.47,17162.48),
-#'y= c(-18.653,-22.085,-24.206,-23.637,-28.192,-26.725,-22.768,-12.975,8.319,35.432,47.791,44.786,41.467,35.165,30.382,25.992,-46.246,-54.979,-61.189,-59.834,-56.147,-53.484,-60.475,-65.256,-66.094,-69.688,-56.973,-55.308,-45.003,-36.956,-4.272,38.82,69.643,73.893,76.769,74.809,60.562,52.592,53.264,43.279,40.532,37.519,34.601,-18.422,-22.107,-25.234,-21.748,-24.197,-28.48,-24.147,-19.258,-12.939,8.822,30.679,36.583,33.512,32.056,27.805,24.003,-40.06,-45.823,-50.406,-48.847,-44.919,-45.859,-44.851,-44.193,-55.121,-49.648,-40.006,-31.659,-17.017,11.996,38.762,52.052,56.798,50.211,56.764,50.937,41.486,40.168,34.349,28.823,26.661,-19.918,-23.127,-22.321,-22.068,-25.69,-27.084,-27.054,-19.449,-6.605,15.779,31.56,32.972,32.734,28.59,24.8,-34.918,-39.973,-40.649,-39.271,-37.607,-34.766,-34.863,-33.661,-37.288,-36.661,-34.074,-36.47,-24.59,-19.154,-4.755,12.045,38.719,43.05,44.297,43.105,39.773,38.471,32.6,29.635,27.276,25.083,23.04,-17.794,-20.639,-21.169,-22.428,-25.567,-27.086,-26.901,-24.971,-19.366,-11.661,7.522,28.536,34.032,35.441,31.242,24.028,21.176,18.528,-24.36,-27.324,-24.681,-26.942,-28.918,-30.315,-24.444,-28.297,-28.172,-28.771,-30.975,-27.921,-21.731,-11.926,-2.526,25.194,32.471,35.17,34.006,36.147,32.109,29.899,26.714,28.599,26.338,24.223,-19.922,-22.893,-25.238,-29.382,-27.249,-27.755,-22.954,-18.401,-13.114,-5.045,15.734,27.33,29.579,31.721,24.39,23.546,20.87,18.394,-24.945,-28.008,-28.297,-28.817,-28.139,-28.293,-24.707,-23.145,-22.493,-16.977,-21.233,-19.091,-7.921,9.781,24.137,31.313,35.027,34.345,33.964,29.236,26.307,23.864,21.58,-25.33,-28.539,-30.156,-28.955,-30.575,-33.141,-29.936,-27.099,-23.409,-8.369,11.395,28.159,36.01,36.517,29.526,26.168,22.7,19.974,17.506,-24.569,-27.928,-27.238,-28.711,-30.122,-31.377,-31.697,-24.081,-22.533,-16.341,-11.964,-0.933,9.693,17.118,24.347,25.299,29.882,26.483,23.418,22.459,19.974,17.633,-28.628,-32.029,-33.529,-41.895,-40.883,-41.28,-44.114,-41.396,-33.762,-29.614,-15.798,1.942,24.487,33.692,40.948,36.355,39.003,33.888,28.442,25.433,24.942,22.349,-24.229,-28.098,-32.408,-29.211,-25.911,-23.632,-20.709,-20.092,-18.368,-13.046,-16.152,-11.59,3.499,15.755,31.07,30.751,31.846,30.849,27.461,24.585,21.416,-35.649,-40.609,-39.35,-45.037,-45.136,-42.603,-50.455,-44.622,-43.647,-36.158,-28.342,-13.979,2.094,27.724,39.423,45.112,38.664,43.163,36.584,33.462,26.619,25.746,22.686,-30.14,-34.817,-31.33,-33.771,-33.053,-28.005,-29.163,-24.753,-24.347,-26.183,-18.007,-12.427,1.28,21.562,32.515,37.375,36.015,28.871,28.338,24.539,21.033,-38.049,-43.806,-44.321,-48.568,-49.435,-47.334,-44.669,-54.716,-49.784,-47.462,-44.683,-26.356,-11.207,19.272,36.543,48.833,44.999,44.683,43.047,36.999,34.196,29.485,26.606,23.937,-25.615,-29.839,-29.219,-28.334,-27.333,-26.002,-28.523,-26.55,-21.499,-14.828,-7.22,4.43,22.857,39.064,41.272,35.283,30.65,28.275,24.193,-45.726,-53.44,-59.432,-50.086,-49.383,-47.175,-48.456,-56.536,-47.769,-46.784,-45.151,-36.815,-20.215,-2.805,27.936,54.861,43.438,45.742,48.601,50.477,45.91,37.939,35.27,31.669,28.385,-29.957,-35.23,-31.174,-39.106,-31.89,-22.075,-13.965,-18.587,-17.09,-22.42,-22.194,1.313,25.126,32.812,38.521,33.45,32.8,31.583,27.376,23.504,-42.185,-48.698,-54.481,-53.145,-51.758,-55.786,-55.003,-55.742,-55.03,-55.094,-43.074,-38.821,-31.601,-5.848,22.325,53.364,62.151,72.12,62.2,54.882,47.956,51.141,39.74,34.343,31.073,28.095,-26.911,-31.507,-29.552,-25.613)
-#')
+#' data(xy_data)
+#' D <- within(xy_data, {
+#'   x <- as.POSIXct(x * 60 * 60 * 24, origin = "1970-01-01")
+#' })
+#'
+#' plot(D)
+#'
+#' stopifnot(require(matrixStats))
+#'
+#' # as a tidal filter
+#' spinterpData <- ccInterpFilter(D, 24, centred = FALSE)
+#' lines(spinterpData$Date, spinterpData$avg, col = "red")
+#'
+#' # 95% confidence
+#' stdev <- rowSds(as.matrix(spinterpData[2:(length(spinterpData) - 1)]))
+#' spinterpConfi <- data.frame(spinterpData$Date, spinterpData$avg)
+#' spinterpConfi <- cbind(spinterpConfi, upper = spinterpData$avg + stdev)
+#' spinterpConfi <- cbind(spinterpConfi, lower = spinterpData$avg - stdev)
+#'
+#' lines(spinterpConfi$spinterpData.Date, spinterpConfi$upper)
+#' lines(spinterpConfi$spinterpData.Date, spinterpConfi$lower)
+#'
+#' # as a noise removing filter
+#' # keep tide but smooth
+#' spinterpData <- ccInterpFilter(D, 2, centred = FALSE)
+#' plot(D[50:100, ])
+#' lines(spinterpData$Date, spinterpData$avg, col = "red")
 #'
 #'
-#'D$x <- as.POSIXct(D$x*60*60*24, origin="1970-01-01")
-#'plot(D)
+#' # 95% confidence
+#' stdev <- rowSds(as.matrix(spinterpData[2:(length(spinterpData) - 1)]))
+#' spinterpConfi <- data.frame(spinterpData$Date, spinterpData$avg)
+#' spinterpConfi <- cbind(spinterpConfi, upper = spinterpData$avg + stdev)
+#' spinterpConfi <- cbind(spinterpConfi, lower = spinterpData$avg - stdev)
 #'
-#'library(matrixStats)
-#'
-#'#as a tidal filter
-#'spinterpData <- ccInterpFilter(D, 24, centred=FALSE)
-#'lines(spinterpData$Date, spinterpData$avg, col="red")
-#'
-#'# 95% confidence
-#'stdev <- rowSds(as.matrix(spinterpData[2:(length(spinterpData) -1 )]  ))
-#'spinterpConfi <- data.frame(spinterpData$Date, spinterpData$avg)
-#'spinterpConfi <- cbind(spinterpConfi, upper = spinterpData$avg + 2*stdev )
-#'spinterpConfi <- cbind(spinterpConfi, lower = spinterpData$avg - 2*stdev )
-#'
-#'lines(spinterpConfi$spinterpData.Date, spinterpConfi$upper)
-#'lines(spinterpConfi$spinterpData.Date, spinterpConfi$lower)
-#'
-#'#as a noise removing filter
-#'#keep tide but smooth
-#'spinterpData <- ccInterpFilter(D, 2, centred=FALSE)
-#'plot(D[50:100,])
-#'lines(spinterpData$Date, spinterpData$avg, col="red")
-#'
-#'
-#'# 95% confidence
-#'stdev <- rowSds(as.matrix(spinterpData[2:(length(spinterpData) -1 )]  ))
-#'spinterpConfi <- data.frame(spinterpData$Date, spinterpData$avg)
-#'spinterpConfi <- cbind(spinterpConfi, upper = spinterpData$avg + 2*stdev )
-#'spinterpConfi <- cbind(spinterpConfi, lower = spinterpData$avg - 2*stdev )
-#'
-#'lines(spinterpConfi$spinterpData.Date, spinterpConfi$upper)
-#'lines(spinterpConfi$spinterpData.Date, spinterpConfi$lower)
+#' lines(spinterpConfi$spinterpData.Date, spinterpConfi$upper)
+#' lines(spinterpConfi$spinterpData.Date, spinterpConfi$lower)
 #'
 #' @export
 
-
-
-ccInterpFilter <- function(ts, hours = 24, discardbelowzero = FALSE, centred = FALSE, type="spinterp")
-{
+ccInterpFilter <- function(ts, hours = 24, discardbelowzero = FALSE,
+                           centred = FALSE, type = "spinterp") {
   # Trim times up, won't use part hours
   # (I don't like this, way too many lines to just chop the top few lines below a time)
-  if(round(ts[1,1] , units="hours") < ts[1,1])
-  {
-    roundedtime <- round(ts[1,1] , units="hours")+1*60*60 # add an hour to the rounded down (why can't I just round up?)
-    f.round <- approxfun(ts[,1], ts[,2])
+  if (round(ts[1, 1], units = "hours") < ts[1, 1]) {
+    roundedtime <- round(ts[1, 1], units = "hours") + 1 * 60 * 60 # add an hour to the rounded down (why can't I just round up?)
+    f.round <- approxfun(ts[, 1], ts[, 2])
     startvalue <- f.round(roundedtime) # just interpolates the first timestamp on the hour
-    if (length(ts)>2)
-    {
-      df <- data.frame(t = roundedtime, startvalue, ts[1,3] )
-    }else
-    {
-      df <- data.frame(t = roundedtime, startvalue )
+    if (length(ts) > 2) {
+      df <- data.frame(t = roundedtime, startvalue, ts[1, 3])
+    } else {
+      df <- data.frame(t = roundedtime, startvalue)
     }
     colnames(df) <- colnames(ts)
     ts <- rbind(df, ts)
@@ -85,19 +78,19 @@ ccInterpFilter <- function(ts, hours = 24, discardbelowzero = FALSE, centred = F
 
   # ts = dataframe of posixct time, and a value.
 
-  timeseq <- seq(round(min(ts[,1])-1*60*60, units="hours"),round(max(ts[,1]), units="hours"), by=60*60)
+  timeseq <- seq(round(min(ts[, 1]) - 1 * 60 * 60, units = "hours"), round(max(ts[, 1]), units = "hours"), by = 60 * 60)
 
   spinterpList <- list()
-  #add first first "column"
-  spinterpList[[1]] <- as.numeric(timeseq)/60/60/24
+  # add first first "column"
+  spinterpList[[1]] <- as.numeric(timeseq) / 60 / 60 / 24
 
-  #Loop through all daily interpolations
-  for(i in 0:(hours-1))
+  # Loop through all daily interpolations
+  for (i in 0:(hours - 1))
   {
     # for each 24 hour interpolation, increment the offset by an hour each time
-    daily <- changeInterval(ts, Interval=hours*60, offset=i*60)
+    daily <- changeInterval(ts, Interval = hours * 60, offset = i * 60)
     offset <- 0
-    if (discardbelowzero==FALSE){
+    if (discardbelowzero == FALSE) {
       # spinterp can't do negative cumulative dishcharge, so add an offset to prevent any negative flows
       offset <- min(daily$FMean)
       daily$FMean <- daily$FMean - offset
@@ -107,37 +100,34 @@ ccInterpFilter <- function(ts, hours = 24, discardbelowzero = FALSE, centred = F
     daily[is.na(daily)] <- 0
 
     # convert to numeric
-    numdate <- as.numeric(as.POSIXct(daily$Date, format=format)) /60/60/24
+    numdate <- as.numeric(as.POSIXct(daily$Date, format = format)) / 60 / 60 / 24
     # create hourly spinterp data ( interpolation of cumulative daily discharge )
-    spinterpSegment <- spinterpConvert(numdate, daily$FMean, type=type)
+    spinterpSegment <- spinterpConvert(numdate, daily$FMean, type = type)
     # remove offset again
-    spinterpSegment$Data <- spinterpSegment$Data+offset
+    spinterpSegment$Data <- spinterpSegment$Data + offset
     # create lookup table
     f.segment <- approxfun(spinterpSegment)
     # lookup table at date and add to list
-    spinterpList[[i+2]] <- f.segment(spinterpList[[1]])
-
+    spinterpList[[i + 2]] <- f.segment(spinterpList[[1]])
   }
 
   spinterpData <- as.data.frame(do.call(cbind, spinterpList))
 
-  setcolnames <- paste("Col", 0:(hours-1), sep = "")
+  setcolnames <- paste("Col", 0:(hours - 1), sep = "")
   setcolnames <- c("Date", setcolnames)
   colnames(spinterpData) <- setcolnames
 
   spinterpData <- na.trim(spinterpData)
 
   # centred == TRUE = bias towards inner averages, tested but not useful for tidal filter
-  if (centred == TRUE)
-  {
-    avgS <- round(hours/4, 0)
-    avgF <- hours-avgS
+  if (centred == TRUE) {
+    avgS <- round(hours / 4, 0)
+    avgF <- hours - avgS
 
-    spinterpData <- cbind(spinterpData, avg = rowMeans(spinterpData[avgS+2:avgF+1]))
-  }else{
+    spinterpData <- cbind(spinterpData, avg = rowMeans(spinterpData[avgS + 2:avgF + 1]))
+  } else {
     spinterpData <- cbind(spinterpData, avg = rowMeans(spinterpData[-1]))
   }
-  spinterpData$Date <- as.POSIXct(spinterpData$Date*60*60*24, origin="1970-01-01")
+  spinterpData$Date <- as.POSIXct(spinterpData$Date * 60 * 60 * 24, origin = "1970-01-01")
   return(spinterpData)
 }
-
