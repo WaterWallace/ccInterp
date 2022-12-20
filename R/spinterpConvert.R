@@ -27,7 +27,7 @@
 #' f.D <- approxfun(D, method = "constant")
 #'
 #' plot(D, ylim = c(0, 450))
-#' ts <- seq(dplyr::first(D$x), dplyr::last(D$x), by = (1 / 24))
+#' ts <- seq(D$x[1], D$x[length(D$x)], by = (1 / 24))
 #' lines(ts, f.D(ts), ylim = c(0, 450))
 #' # upsample to hourly
 #' # default = spinterp
