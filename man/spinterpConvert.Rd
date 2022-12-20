@@ -44,8 +44,8 @@ ts <- seq(D$x[1], D$x[length(D$x)], by = (1 / 24))
 lines(ts, f.D(ts), ylim = c(0, 450))
 # upsample to hourly
 # default = spinterp
-DHourly <- spinterpConvert(D$x, D$y)
-lines(DHourly, col = "blue")
+DHourly <- spinterpConvert(D$x, D$y, type = "spinterp")
+lines(DHourly, col = "red")
 
 # type = spline
 DHourly <- spinterpConvert(D$x, D$y, type = "spline")

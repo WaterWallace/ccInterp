@@ -73,7 +73,7 @@ head(twentyfourhour)
 # output an hourly forward mean (timestamp at beginning of period ),
 hourly <- changeInterval(D, Interval = "Hourly", option = "fmean")
 f.hourly <- approxfun(hourly$Date, hourly$FMean, method = "constant")
-ts <- seq(first(hourly$Date), last(hourly$Date), by = 10 * 60)
+ts <- seq(hourly$Date[1], hourly$Date[nrow(hourly)], by = 10 * 60)
 lines(ts, f.hourly(ts), col = "red")
 
 # output an hourly instanaenous (timestamp in middle of averaging period ),
