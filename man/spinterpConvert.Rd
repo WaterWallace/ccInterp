@@ -26,30 +26,30 @@ dataframe with time in days and an interpolated rate.
 Simply gets the derivative of the cumulative discharge
 not appropriate for downsampling intervals from hourly back to daily
 Use changeInterval() for that.
-(even though theoretically spinterpConvert will work fine for downsampling, and in some cases technically preferred)
+(even though theoretically spinterpConvert will work fine for downsampling,
+ and in some cases technically preferred)
 Using "spinterp" Interpolation over long gaps could have unpredicatable results.
 }
 \examples{
 
 
 # daily times and daily means
-D <- list( x=c(16832.96,16833.96,16834.96,16835.96,16836.96,16837.96,16838.96,16839.96,16840.96,16841.96,16842.96,16843.96,16844.96,16845.96,16846.96,16847.96,16848.96,16849.96,16850.96,16851.96,16852.96,16853.96,16854.96,16855.96,16856.96,16857.96,16858.96,16859.96,16860.96,16861.96,16862.96,16863.96,16864.96,16865.96,16866.96,16867.96,16868.96,16869.96,16870.96,16871.96,16872.96,16873.96,16874.96,16875.96,16876.96,16877.96,16878.96,16879.96,16880.96,16881.96,16882.96,16883.96,16884.96,16885.96,16886.96,16887.96,16888.96,16889.96,16890.96,16891.96),
-          y=c(  0,2.707,1.3795,211.932,22.565,4.409,2.536,1.162,0.66,0.358,0.291,0.1065,0.099,0.0265,0.0055,0,0,0,0,2.195,11.208,3.4125,1.3465,0.657,0.3255,0.2915,0.1235,0.0985,0.058,3.629,111.4225,148.32,144.8815,99.8055,45.8355,43.858,13.0915,5.876,3.6715,1.5845,0.8965,13.5315,2.902,1.608,0.7085,0.428,0.1965,0.2055,0.07,0.057,0.0235,0.007,0.006,0.001,0,0,0,0,0,0)
-)
+data(xy2_data)
+D <- xy2_data
 
-f.D <- approxfun(D, method="constant")
+f.D <- approxfun(D, method = "constant")
 
-plot(D, ylim=c(0,450))
-ts <- seq (first(D$x),last(D$x), by = (1/24 ) )
-lines(ts, f.D(ts), ylim=c(0,450) )
+plot(D, ylim = c(0, 450))
+ts <- seq(D$x[1], D$x[length(D$x)], by = (1 / 24))
+lines(ts, f.D(ts), ylim = c(0, 450))
 # upsample to hourly
 # default = spinterp
-DHourly <- spinterpConvert(D$x, D$y)
-lines(DHourly, col="blue")
+DHourly <- spinterpConvert(D$x, D$y, type = "spinterp")
+lines(DHourly, col = "red")
 
 # type = spline
 DHourly <- spinterpConvert(D$x, D$y, type = "spline")
-lines(DHourly, col="blue")
+lines(DHourly, col = "blue")
 
 # type = linear
 # DHourly <- spinterpConvert(D$x, D$y, type = "linear")
