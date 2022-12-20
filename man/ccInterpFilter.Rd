@@ -52,8 +52,8 @@ lines(spinterpData$Date, spinterpData$avg, col = "red")
 # 95\% confidence
 stdev <- rowSds(as.matrix(spinterpData[2:(length(spinterpData) - 1)]))
 spinterpConfi <- data.frame(spinterpData$Date, spinterpData$avg)
-spinterpConfi <- cbind(spinterpConfi, upper = spinterpData$avg + stdev)
-spinterpConfi <- cbind(spinterpConfi, lower = spinterpData$avg - stdev)
+spinterpConfi <- cbind(spinterpConfi, upper = spinterpData$avg + 2*stdev)
+spinterpConfi <- cbind(spinterpConfi, lower = spinterpData$avg - 2*stdev)
 
 lines(spinterpConfi$spinterpData.Date, spinterpConfi$upper)
 lines(spinterpConfi$spinterpData.Date, spinterpConfi$lower)
@@ -68,8 +68,8 @@ lines(spinterpData$Date, spinterpData$avg, col = "red")
 # 95\% confidence
 stdev <- rowSds(as.matrix(spinterpData[2:(length(spinterpData) - 1)]))
 spinterpConfi <- data.frame(spinterpData$Date, spinterpData$avg)
-spinterpConfi <- cbind(spinterpConfi, upper = spinterpData$avg + stdev)
-spinterpConfi <- cbind(spinterpConfi, lower = spinterpData$avg - stdev)
+spinterpConfi <- cbind(spinterpConfi, upper = spinterpData$avg + 2*stdev)
+spinterpConfi <- cbind(spinterpConfi, lower = spinterpData$avg - 2*stdev)
 
 lines(spinterpConfi$spinterpData.Date, spinterpConfi$upper)
 lines(spinterpConfi$spinterpData.Date, spinterpConfi$lower)
