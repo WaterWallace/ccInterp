@@ -86,4 +86,3 @@ maxminfun <- function(refx, refy, newts, option = "max", dt = 2) {
 
   return(newts)
 }
-
