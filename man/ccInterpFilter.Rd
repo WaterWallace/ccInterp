@@ -28,7 +28,6 @@ dataframe with timestamp as posixct a trapezoidal integrated rate and quality co
 }
 \description{
 Derivative of overlapping trapezoidally integrated datasets
-# function(ts, hours = 24, discardbelowzero = FALSE, centred = FALSE, type="spinterp")
 }
 \details{
 Useful for detiding or denoising of data
