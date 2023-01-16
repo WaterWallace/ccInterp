@@ -15,6 +15,7 @@ NULL
 #' @import zoo
 #' @import pracma
 #' @import schumaker
+#' @import matrixStats
 NULL
 
 #' Xy data

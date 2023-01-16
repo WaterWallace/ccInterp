@@ -1,7 +1,6 @@
 #' Combined Cumulative Interpolation Filter
 #'
 #' Derivative of overlapping trapezoidally integrated datasets
-#' # function(ts, hours = 24, discardbelowzero = FALSE, centred = FALSE, type="spinterp")
 #'
 #' Useful for detiding or denoising of data
 #' The overlapping averaging windows allow multiple recalculations of the same data
