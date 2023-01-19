@@ -7,6 +7,9 @@
 #' Which provides an estimate of the uncertainty in applying the filter
 #'
 #' @param spiky dataframe of posixct time (time in seconds) and an instantaneous value (per second i.e. cumecs)
+#' @param hoursAvg number of hours to smooth
+#' @param stdevs number of standard deviations to include
+#' @param doPlot do plots
 #'
 #' @return  dataframe with timestamp as posixct, and despiked timeseries data
 #'
@@ -26,6 +29,7 @@
 #' despikedD <- cciDespike(D)
 #' points(despikedD, col="black", pch=16)
 #' @export
+
 cciDespike <- function(spiky, hoursAvg = 3, stdevs = 2, doPlot = FALSE)
 {
 
