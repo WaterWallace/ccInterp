@@ -10,8 +10,8 @@ License: GPL-2
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 7.2.3
-Imports: dplyr, zoo, pracma, schumaker
-Suggests: matrixStats
+Imports: dplyr, zoo, pracma, schumaker, matrixStats
+Suggests: 
 NeedsCompilation: no
 Packaged: 2022-12-06 07:41:56 UTC; Bill
 Depends: R (>= 4.2.0)

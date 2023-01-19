@@ -64,8 +64,7 @@ cciDespike <- function(spiky, hoursAvg = 3, stdevs = 2, doPlot = FALSE)
     bigshape <- data.frame(
       x = c(spiky[,1], rev(spiky[,1])) ,
       y = c(f.lower(spiky[,1])-spikeSD, rev(f.upper(spiky[,1])+spikeSD)  )
-      )
-    shape <- na.omit(shape)
+    )
     shape <- data.frame(
       x = c(spiky[,1], rev(spiky[,1])) ,
       y = c(f.lower(spiky[,1]), rev(f.upper(spiky[,1])))
