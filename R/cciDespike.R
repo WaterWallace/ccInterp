@@ -26,22 +26,22 @@
 #' despikedD <- cciDespike(D)
 #' points(despikedD, col="black", pch=16)
 #' @export
-cciDespike <- function(spiky)
+cciDespike <- function(spiky, hoursAvg = 3, stdevs = 2, doPlot = FALSE)
 {
 
-  #spiky <- mrdPlot
-  spinterpData <- ccInterpFilter(spiky, 3, centred=FALSE)
+  #spiky <- D
+  spinterpData <- ccInterpFilter(spiky, hoursAvg, centred=FALSE)
 
   # 95% confidence
   stdev <- rowSds(as.matrix(spinterpData[2:(length(spinterpData) -1 )]  ))
   spinterpConfi <- data.frame(spinterpData$Date, spinterpData$avg)
-  spinterpConfi <- cbind(spinterpConfi, upper = spinterpData$avg + 2*stdev ) # two standard deviations
-  spinterpConfi <- cbind(spinterpConfi, lower = spinterpData$avg - 2*stdev ) # two standard deviations
+  spinterpConfi <- cbind(spinterpConfi, upper = spinterpData$avg + stdevs*stdev ) # two standard deviations
+  spinterpConfi <- cbind(spinterpConfi, lower = spinterpData$avg - stdevs*stdev ) # two standard deviations
 
   f.upper <- approxfun(spinterpConfi$spinterpData.Date, spinterpConfi$upper)
   f.lower <- approxfun(spinterpConfi$spinterpData.Date, spinterpConfi$lower)
 
-  spinterpDespiked <- spiky[spiky[,2] < f.upper(spiky[,1]) & spiky[,2] > f.lower(spiky[,1]),]
+  spinterpDespiked <- spiky[spiky[,2] <= f.upper(spiky[,1]) & spiky[,2] >= f.lower(spiky[,1]),]
   removedPoints <- spiky[spiky[,2] > f.upper(spiky[,1]) | spiky[,2] < f.lower(spiky[,1]),]
 
   f.spinterpDespiked <- approxfun(spinterpDespiked)
@@ -53,6 +53,29 @@ cciDespike <- function(spiky)
   removedPoints <- na.omit(removedPoints)
   spikeSD <- sd(na.omit(removedPoints$resid))
   removedPoints <- removedPoints[ abs(removedPoints$resid) > spikeSD, ]
+
+  if(doPlot)
+  {
+    plot(spiky)
+    bigshape <- data.frame(
+      x = c(spiky[,1], rev(spiky[,1])) ,
+      y = c(f.lower(spiky[,1])-spikeSD, rev(f.upper(spiky[,1])+spikeSD)  )
+      )
+    shape <- na.omit(shape)
+    shape <- data.frame(
+      x = c(spiky[,1], rev(spiky[,1])) ,
+      y = c(f.lower(spiky[,1]), rev(f.upper(spiky[,1])))
+    )
+    shape <- na.omit(shape)
+    bigshape <- na.omit(bigshape)
+
+    polygon(bigshape, col="lightgrey" )
+    polygon(shape, col="darkgrey")
+    points(spinterpDespiked, col="black")
+    points(removedPoints, col="red", pch=19)
+
+
+  }
 
   return (spiky[!spiky[,1] %in% removedPoints[,1],])
 }
