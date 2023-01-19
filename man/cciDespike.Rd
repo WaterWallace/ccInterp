@@ -8,6 +8,12 @@ cciDespike(spiky, hoursAvg = 3, stdevs = 2, doPlot = FALSE)
 }
 \arguments{
 \item{spiky}{dataframe of posixct time (time in seconds) and an instantaneous value (per second i.e. cumecs)}
+
+\item{hoursAvg}{number of hours to smooth}
+
+\item{stdevs}{number of standard deviations to include}
+
+\item{doPlot}{do plots}
 }
 \value{
 dataframe with timestamp as posixct, and despiked timeseries data
