@@ -54,32 +54,35 @@ cciDespike <- function(spiky, hoursAvg = 3, stdevs = 2, doPlot = FALSE)
   )
 
   removedPoints <- na.omit(removedPoints)
-  plot(removedPoints$x, removedPoints$resid)
 
-  SixHourlyResiduals <- changeInterval(data.frame(removedPoints$x, removedPoints$resid), Interval = 6*60)
-  points(SixHourlyResiduals$Date, SixHourlyResiduals$FMean)
+  SixHourlyResiduals <- changeInterval(data.frame(removedPoints[,1], removedPoints$resid), Interval = 6*60)
 
   SixHourlyResiduals$SD <- rollapply(SixHourlyResiduals$FMean,width=10,FUN=sd,fill=NA,align="c")
-  lines(SixHourlyResiduals$Date, SixHourlyResiduals$SD, col="red")
-
-  #?rollapply
-  #lines(dailyResiduals$Date, spikeSD, col="red")
-  #abline(spikeSD, 0, col="red")
 
   f.SD <- approxfun(SixHourlyResiduals$Date, SixHourlyResiduals$SD, na.rm=TRUE, rule=2)
-  removedPoints <- removedPoints[ abs(removedPoints$resid) > f.SD(removedPoints$x), ]
+  removedPoints <- removedPoints[ abs(removedPoints$resid) > f.SD(removedPoints[,1]), ]
 
   if(doPlot)
   {
     plot(spiky)
-    bigshape <- data.frame(
-      x = c(spiky[,1], rev(spiky[,1])) ,
-      y = c(f.lower(spiky[,1])-f.SD(spiky[,1]) ), rev(f.upper(spiky[,1])+f.SD(spiky[,1])  )
+
+    upperLine <- data.frame( x = rev(spiky[,1]),
+                             y = rev(f.upper(spiky[,1])+f.SD(spiky[,1]) )
     )
-    shape <- data.frame(
-      x = c(spiky[,1], rev(spiky[,1])) ,
-      y = c(f.lower(spiky[,1]), rev(f.upper(spiky[,1])))
+    bottomLine <- data.frame(x = spiky[,1],
+                             y = f.lower(spiky[,1])-f.SD(spiky[,1])
     )
+    bigshape <- rbind(bottomLine, upperLine)
+
+    #
+    upperLine <- data.frame( x = rev(spiky[,1]),
+                             y = rev(f.upper(spiky[,1]) )
+    )
+    bottomLine <- data.frame(x = spiky[,1],
+                             y = f.lower(spiky[,1])
+    )
+    shape <- rbind(bottomLine, upperLine)
+
     shape <- na.omit(shape)
     bigshape <- na.omit(bigshape)
 
