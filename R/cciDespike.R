@@ -12,7 +12,6 @@
 #' @param doPlot do plots
 #'
 #' @return  dataframe with timestamp as posixct, and despiked timeseries data
-#'
 #' @examples
 #' data(xy_data)
 #' D <- within(xy_data, {

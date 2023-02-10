@@ -14,6 +14,8 @@ maxminfun(refx, refy, newts, option = "max", dt = 2)
 \item{newts}{target x interval i.e. hourly/daily.}
 
 \item{option}{"max" or "min" to return interval max or interval min.}
+
+\item{dt}{data type, 1 = inst, 2 = forward mean}
 }
 \value{
 dataframe with newts xaxis, and a forward looking max or min of refy.

@@ -13,11 +13,11 @@ If point data is used (not preferred as precision can be lost), set dt = 1}
 
 \item{rate}{rate of the parameter, i.e. distance/time}
 
+\item{outputInt}{output interval, time in days, i.e. hourly = 1/24}
+
 \item{type}{"spinterp", "spline"}
 
 \item{dt}{datatrans, default 2 = forward mean}
-
-\item{ouputInt}{output interval, time in days, i.e. hourly = 1/24}
 }
 \value{
 dataframe with time in days and an interpolated rate.
