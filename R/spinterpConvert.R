@@ -11,7 +11,7 @@
 #' inputs must be stepped averages (default, dt = 2)
 #' If point data is used (not preferred as precision can be lost), set dt = 1
 #' @param rate rate of the parameter, i.e. distance/time
-#' @param ouputInt output interval, time in days, i.e. hourly = 1/24
+#' @param outputInt output interval, time in days, i.e. hourly = 1/24
 #' @param type "spinterp", "spline"
 #' @param dt datatrans, default 2 = forward mean
 #'

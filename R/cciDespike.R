@@ -12,7 +12,6 @@
 #' @param doPlot do plots
 #'
 #' @return  dataframe with timestamp as posixct, and despiked timeseries data
-#'
 #' @examples
 #' data(xy_data)
 #' D <- within(xy_data, {
@@ -33,7 +32,6 @@
 cciDespike <- function(spiky, hoursAvg = 3, stdevs = 2, doPlot = FALSE)
 {
 
-  #spiky <- D
   spinterpData <- ccInterpFilter(spiky, hoursAvg, centred=FALSE)
 
   # 95% confidence
@@ -55,21 +53,35 @@ cciDespike <- function(spiky, hoursAvg = 3, stdevs = 2, doPlot = FALSE)
   )
 
   removedPoints <- na.omit(removedPoints)
-  spikeSD <- sd(na.omit(removedPoints$resid))
-  removedPoints <- removedPoints[ abs(removedPoints$resid) > spikeSD, ]
+
+  SixHourlyResiduals <- changeInterval(data.frame(removedPoints[,1], removedPoints$resid), Interval = 6*60)
+
+  SixHourlyResiduals$SD <- rollapply(SixHourlyResiduals$FMean,width=10,FUN=sd,fill=NA,align="c")
+
+  f.SD <- approxfun(SixHourlyResiduals$Date, SixHourlyResiduals$SD, na.rm=TRUE, rule=2)
+  removedPoints <- removedPoints[ abs(removedPoints$resid) > f.SD(removedPoints[,1]), ]
 
   if(doPlot)
   {
     plot(spiky)
-    bigshape <- data.frame(
-      x = c(spiky[,1], rev(spiky[,1])) ,
-      y = c(f.lower(spiky[,1])-spikeSD, rev(f.upper(spiky[,1])+spikeSD)  )
-      )
-    shape <- na.omit(shape)
-    shape <- data.frame(
-      x = c(spiky[,1], rev(spiky[,1])) ,
-      y = c(f.lower(spiky[,1]), rev(f.upper(spiky[,1])))
+
+    upperLine <- data.frame( x = rev(spiky[,1]),
+                             y = rev(f.upper(spiky[,1])+f.SD(spiky[,1]) )
     )
+    bottomLine <- data.frame(x = spiky[,1],
+                             y = f.lower(spiky[,1])-f.SD(spiky[,1])
+    )
+    bigshape <- rbind(bottomLine, upperLine)
+
+    #
+    upperLine <- data.frame( x = rev(spiky[,1]),
+                             y = rev(f.upper(spiky[,1]) )
+    )
+    bottomLine <- data.frame(x = spiky[,1],
+                             y = f.lower(spiky[,1])
+    )
+    shape <- rbind(bottomLine, upperLine)
+
     shape <- na.omit(shape)
     bigshape <- na.omit(bigshape)
 
@@ -77,7 +89,6 @@ cciDespike <- function(spiky, hoursAvg = 3, stdevs = 2, doPlot = FALSE)
     polygon(shape, col="darkgrey")
     points(spinterpDespiked, col="black")
     points(removedPoints, col="red", pch=19)
-
 
   }
 

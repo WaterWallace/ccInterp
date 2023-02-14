@@ -13,6 +13,7 @@
 #' @param refy source y input.
 #' @param newts target x interval i.e. hourly/daily.
 #' @param option "max" or "min" to return interval max or interval min.
+#' @param dt data type, 1 = inst, 2 = forward mean
 #'
 #' @return  dataframe with newts xaxis, and a forward looking max or min of refy.
 #'

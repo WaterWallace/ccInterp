@@ -73,17 +73,17 @@ changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
     if (Interval == "Daily") {
       # round to full day
       # if (ts[1,1] >  round(ts[1,1], units="days") ) cullBefore = ts[1,1]
-      start <- round(ts[1, 1], units = "days")
+      start <- round.POSIXt(ts[1, 1], units = "days")
     } else if (Interval == "Hourly") {
       # if (ts[1,1] >  round(ts[1,1], units="days") ) cullBefore = ts[1,1]
       # round to full hour
-      start <- round(ts[1, 1], units = "hours")
+      start <- round.POSIXt(ts[1, 1], units = "hours")
     } else {
       # start at raw value
 
       if (rounded == TRUE) {
         # if (ts[1,1] >  round(ts[1,1], units="days") ) cullBefore = ts[1,1]
-        start <- round(ts[1, 1], units = "hours")
+        start <- round.POSIXt(ts[1, 1], units = "hours")
       } else {
         start <- ts[1, 1]
       }
@@ -143,19 +143,15 @@ changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
 
   # cumulative sum
   ts$accum <- cumsum(ts$megalitres)
-
-
-  f.linear <- approxfun(ts[, 1], ts$accum)
-  f.accum <- splinefun(ts[, 1], ts$accum, method = "fmm")
-
-
   # new time sequence for new interval
   newintTS <- seq(start + offset * 60, end, by = timestep)
 
   # delta y
   if (linearInterp) {
+    f.linear <- approxfun(ts[, 1], ts$accum)
     newTS <- f.linear(newintTS)
   } else {
+    f.accum <- splinefun(ts[, 1], ts$accum, method = "fmm")
     newTS <- f.accum(newintTS)
   }
 

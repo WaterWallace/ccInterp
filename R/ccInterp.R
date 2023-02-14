@@ -16,6 +16,8 @@ NULL
 #' @import pracma
 #' @import schumaker
 #' @import matrixStats
+#' @import signal
+#' @import stats
 NULL
 
 #' Xy data
