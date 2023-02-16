@@ -54,35 +54,27 @@
 #' lines(spinterpConfi$spinterpData.Date, spinterpConfi$lower)
 #'
 #' @export
-
 ccInterpFilter <- function(ts, hours = 24, discardbelowzero = FALSE,
                            centred = FALSE, type = "spinterp") {
   # Trim times up, won't use part hours
   # (I don't like this, way too many lines to just chop the top few lines below a time)
-  if (round(ts[1, 1], units = "hours") < ts[1, 1]) {
-    roundedtime <- round(ts[1, 1], units = "hours") + 1 * 60 * 60 # add an hour to the rounded down (why can't I just round up?)
+  if (round.POSIXt(ts[1, 1], units = "hours") > ts[1, 1]) {
+    roundedtime <- round.POSIXt(ts[1, 1], units = "hours") # round up
     f.round <- approxfun(ts[, 1], ts[, 2])
-    startvalue <- f.round(roundedtime) # just interpolates the first timestamp on the hour
+    startvalue <- f.round(as.POSIXct(roundedtime)) # just interpolates the first timestamp on the hour
     if (length(ts) > 2) {
       df <- data.frame(t = roundedtime, startvalue, ts[1, 3])
     } else {
       df <- data.frame(t = roundedtime, startvalue)
     }
     colnames(df) <- colnames(ts)
+    ts <- ts[ts[,1] > roundedtime,]
     ts <- rbind(df, ts)
   }
   # converts time series to daily, and cumulates, interpolates, and then gets the derivative.
   # does this for each hour, i.e. for 24 hour averaging it will do it 24 times offset an hour each time
   # the result is the average of all hours interpolated.
-
-  # ts = dataframe of posixct time, and a value.
-
-  timeseq <- seq(round(min(ts[, 1]) - 1 * 60 * 60, units = "hours"), round(max(ts[, 1]), units = "hours"), by = 60 * 60)
-
-  spinterpList <- list()
-  # add first first "column"
-  spinterpList[[1]] <- as.numeric(timeseq) / 60 / 60 / 24
-
+  spinterpData <- data.frame()
   # Loop through all daily interpolations
   for (i in 0:(hours - 1))
   {
@@ -104,25 +96,23 @@ ccInterpFilter <- function(ts, hours = 24, discardbelowzero = FALSE,
     spinterpSegment <- spinterpConvert(numdate, daily$FMean, type = type)
     # remove offset again
     spinterpSegment$Data <- spinterpSegment$Data + offset
-    # create lookup table
-    f.segment <- approxfun(spinterpSegment)
-    # lookup table at date and add to list
-    spinterpList[[i + 2]] <- f.segment(spinterpList[[1]])
+    names(spinterpSegment)[2] <- paste("Hour",i,sep="")
+
+    if(i > 0)
+    {
+      spinterpData <- spinterpData %>% dplyr::inner_join(spinterpSegment, by="Date")
+    }else{
+      spinterpData <- spinterpSegment
+    }
+
   }
 
-  spinterpData <- as.data.frame(do.call(cbind, spinterpList))
-
-  setcolnames <- paste("Col", 0:(hours - 1), sep = "")
-  setcolnames <- c("Date", setcolnames)
-  colnames(spinterpData) <- setcolnames
-
-  spinterpData <- na.trim(spinterpData)
+  head(spinterpData)
 
   # centred == TRUE = bias towards inner averages, tested but not useful for tidal filter
   if (centred == TRUE) {
     avgS <- round(hours / 4, 0)
     avgF <- hours - avgS
-
     spinterpData <- cbind(spinterpData, avg = rowMeans(spinterpData[avgS + 2:avgF + 1]))
   } else {
     spinterpData <- cbind(spinterpData, avg = rowMeans(spinterpData[-1]))

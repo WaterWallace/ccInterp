@@ -44,26 +44,25 @@
 #' @export
 spinterpConvert <- function(start, rate, outputInt = (1 / 24), type = "spinterp", dt = 2) {
   if (dt == 1) # if data is of point type, convert to an interval mean at from start point to end point
-    {
-      # start <- df$days
-      # rate <- df$df...2.
+  {
+    # start <- df$days
+    # rate <- df$df...2.
 
-      means <- data.frame(start, rate)
-      means$end <- c(means$start[-1], 0)
-      means$rate2 <- c(means$rate[-1], 0)
-      means <- head(means, -1)
-      tail(means)
+    means <- data.frame(start, rate)
+    means$end <- c(means$start[-1], 0)
+    means$rate2 <- c(means$rate[-1], 0)
+    means <- head(means, -1)
+    tail(means)
 
-      # get average
-      means$avg <- (means$rate + means$rate2) / 2
-      start <- means$start
-      rate <- means$avg
-    }
+    # get average
+    means$avg <- (means$rate + means$rate2) / 2
+    start <- means$start
+    rate <- means$avg
+  }
   if (dt == 3) # mean, average flow until this point
-    {
-      start <- start - (start[2] - start[1])
-    }
-
+  {
+    start <- start - (start[2] - start[1])
+  }
 
   start <- as.numeric(start)
   nt <- length(start)
@@ -75,11 +74,6 @@ spinterpConvert <- function(start, rate, outputInt = (1 / 24), type = "spinterp"
   # create a time sequence for output data
   xp <- seq(t[1], t[nt], by = outputInt)
 
-  # length(dur)
-  # length(rate )
-  # length(t )
-  # length(c(0,rate))
-  # (length(cumdaily))
   negativeOffset <- min(rate)
   rate <- rate - negativeOffset
 
@@ -87,10 +81,6 @@ spinterpConvert <- function(start, rate, outputInt = (1 / 24), type = "spinterp"
   # from "cubic metres per second" into "cubic metres"
   DAYSTOSECONDS <- 60 * 60 * 24
   cumdaily <- cumsum(c(0, rate * head(dur, -1))) # * DAYSTOSECONDS)
-
-  # t<- head(t,-1)
-  # length(cumdaily)
-  # plot(t, cumdaily)
 
   # output at new time interval
   if (type == "spinterp") {
@@ -110,21 +100,12 @@ spinterpConvert <- function(start, rate, outputInt = (1 / 24), type = "spinterp"
     yp <- f.yp(xp)
   }
 
-  length(rate)
-  # plot(start, c(rate) )
-
-  # plot(D)
-  # plot(xp, yp)
-
   # derivative of spinterp
   f.spinterp <- splinefun(xp, yp)
   f.spinterp(xp, deriv = 1)
 
-
-  # f.dur <- approxfun(t, dur, method="constant", f=0)
-  # df <- data.frame( Date=xp,  Data=   f.spinterp(xp, deriv=1), dur= round(f.dur(xp),4)  )
+  xp <- round(xp, 10)
   df <- data.frame(Date = xp, Data = f.spinterp(xp, deriv = 1) + negativeOffset) #  /DAYSTOSECONDS  )
-  # plot(xp, f.dur(xp))
 
   return(df)
 }
