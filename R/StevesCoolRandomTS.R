@@ -42,6 +42,8 @@ StevesCoolRandomTS <- function(maxFlow=500, maxNoise=500, obs=10000, smoothed=TR
                      cumsum(rnorm(length(randomMinutes), mean = 0, sd = 1))^2
   )
   df$Signal <- df$Signal * c(0, df$Signal[-nrow(df)])  # autocorrelate
+  df$Signal <- round(df$Signal, digits = 3)
+  df$Signal <- df$Signal * c(0, df$Signal[-nrow(df)])
 
   if(smoothed)
   {
@@ -50,7 +52,6 @@ StevesCoolRandomTS <- function(maxFlow=500, maxNoise=500, obs=10000, smoothed=TR
     df <- data.frame(Time = hourly$Date, Signal = godin)
     df <- na.omit(df)
   }
-
 
   t <- as.numeric( df[,1] ) /60/60/24
   # Moon driven cycle
@@ -64,8 +65,6 @@ StevesCoolRandomTS <- function(maxFlow=500, maxNoise=500, obs=10000, smoothed=TR
 
   df$Signal <- df$Signal / (max(abs(df$Signal)) / maxFlow)
   df$Noise <- df$Noise / (max(df$Noise)/maxNoise)
-
-
 
   return(df)
 

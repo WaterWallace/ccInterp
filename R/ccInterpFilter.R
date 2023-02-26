@@ -58,8 +58,8 @@ ccInterpFilter <- function(ts, hours = 24, discardbelowzero = FALSE,
                            centred = FALSE, type = "spinterp") {
   # Trim times up, won't use part hours
   # (I don't like this, way too many lines to just chop the top few lines below a time)
-  if (round.POSIXt(ts[1, 1], units = "hours") > ts[1, 1]) {
-    roundedtime <- round.POSIXt(ts[1, 1], units = "hours") # round up
+  if (lubridate::ceiling_date(ts[1, 1], unit = "hours") > ts[1, 1]) {
+    roundedtime <- lubridate::ceiling_date(ts[1, 1], unit = "hours") # round up
     f.round <- approxfun(ts[, 1], ts[, 2])
     startvalue <- f.round(as.POSIXct(roundedtime)) # just interpolates the first timestamp on the hour
     if (length(ts) > 2) {

@@ -18,6 +18,7 @@ NULL
 #' @import matrixStats
 #' @import signal
 #' @import stats
+#' @import lubridate
 NULL
 
 #' Xy data
