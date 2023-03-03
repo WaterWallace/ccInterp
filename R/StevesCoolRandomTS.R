@@ -26,7 +26,7 @@
 #'
 #' @export
 
-StevesCoolRandomTS <- function(maxFlow=500, maxNoise=500, obs=10000, smoothed=TRUE)
+StevesCoolRandomTS <- function(maxFlow=500*runif(1), maxNoise=500*runif(1), obs=10000, smoothed=TRUE)
 {
   end <- Sys.Date() - obs/24
   start <- runif(1, min=end-2*365, max=end)
