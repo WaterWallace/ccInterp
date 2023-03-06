@@ -54,10 +54,14 @@
 #' lines(spinterpConfi$spinterpData.Date, spinterpConfi$lower)
 #'
 #' @export
+#'
+#'
+#'
+#'
 ccInterpFilter <- function(ts, hours = 24, discardbelowzero = FALSE,
                            centred = FALSE, type = "spinterp") {
+
   # Trim times up, won't use part hours
-  # (I don't like this, way too many lines to just chop the top few lines below a time)
   if (lubridate::ceiling_date(ts[1, 1], unit = "hours") > ts[1, 1]) {
     roundedtime <- lubridate::ceiling_date(ts[1, 1], unit = "hours") # round up
     f.round <- approxfun(ts[, 1], ts[, 2])
@@ -106,8 +110,6 @@ ccInterpFilter <- function(ts, hours = 24, discardbelowzero = FALSE,
     }
 
   }
-
-  head(spinterpData)
 
   # centred == TRUE = bias towards inner averages, tested but not useful for tidal filter
   if (centred == TRUE) {
