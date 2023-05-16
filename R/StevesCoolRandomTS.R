@@ -45,6 +45,7 @@ StevesCoolRandomTS <- function(maxFlow=500*runif(1), maxNoise=500*runif(1), obs=
   df$Signal <- round(df$Signal, digits = 3)
   df$Signal <- df$Signal * c(0, df$Signal[-nrow(df)])
 
+
   if(smoothed)
   {
     hourly <- changeInterval(data.frame(df$Time, df$Signal), Interval = "Hourly", option="inst", offset = 30)
@@ -63,8 +64,8 @@ StevesCoolRandomTS <- function(maxFlow=500*runif(1), maxNoise=500*runif(1), obs=
     10 * sin( ( 1/365.25 ) * 2*pi * t+180)
   df$Noise <- d1+d2
 
-  df$Signal <- df$Signal / (max(abs(df$Signal)) / maxFlow)
-  df$Noise <- df$Noise / (max(df$Noise)/maxNoise)
+  df$Signal <- round( df$Signal / (max(abs(df$Signal)) / maxFlow) , 3 )
+  df$Noise <- round( df$Noise / (max(df$Noise)/maxNoise), 3 )
 
   return(df)
 

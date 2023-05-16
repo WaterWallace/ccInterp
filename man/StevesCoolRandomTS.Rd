@@ -4,7 +4,12 @@
 \alias{StevesCoolRandomTS}
 \title{Steves Cool Random Timeseries}
 \usage{
-StevesCoolRandomTS(maxFlow = 500, maxNoise = 500, obs = 10000, smoothed = TRUE)
+StevesCoolRandomTS(
+  maxFlow = 500 * runif(1),
+  maxNoise = 500 * runif(1),
+  obs = 10000,
+  smoothed = TRUE
+)
 }
 \arguments{
 \item{maxFlow}{The upper limit of generated freshwater data}
