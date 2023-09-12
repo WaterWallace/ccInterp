@@ -58,10 +58,14 @@
 #' lines(hourlyInst, col = "orange")
 #' @export
 
-
 changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
                            end = 0, offset = 0, option = "fmean",
                            linearInterp = TRUE, rounded = TRUE) {
+
+
+  stopifnot("duplicate timestamps" = length(ts[,1]) == length(unique(ts[,1])) )
+
+  ts[,1] <- as.POSIXct(ts[,1])
   inputts <- ts
 
   # function omits na's, so will interpolate between
@@ -175,7 +179,8 @@ changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
   }
 
   # tidy up
-  df <- df[df[, 1] >= cullBefore, ]
-  df <- head(df, -1) # remove redundant zero value added as dy
+  df <- df[df[, 1] >=  paste(cullBefore) ,]
+  df <- df[-1,] # remove redundant zero value added as dy
   df <- na.trim(df)
+  return(df)
 }
