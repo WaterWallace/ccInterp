@@ -42,12 +42,17 @@
 #' # DHourly <- spinterpConvert(D$x, D$y, type = "linear")
 #' # lines(DHourly, col="green")
 #' @export
+#'
+#'
+#'
+
+
+
 spinterpConvert <- function(start, rate, outputInt = (1 / 24), type = "spinterp", dt = 2) {
   if (dt == 1) # if data is of point type, convert to an interval mean at from start point to end point
   {
     # start <- df$days
     # rate <- df$df...2.
-
     means <- data.frame(start, rate)
     means$end <- c(means$start[-1], 0)
     means$rate2 <- c(means$rate[-1], 0)
@@ -80,16 +85,21 @@ spinterpConvert <- function(start, rate, outputInt = (1 / 24), type = "spinterp"
   # cumulative sum of discharge
   # from "cubic metres per second" into "cubic metres"
   DAYSTOSECONDS <- 60 * 60 * 24
-  cumdaily <- cumsum(c(0, rate * head(dur, -1))) # * DAYSTOSECONDS)
+  cumdaily <- cumsum(c(0, rate * dur[-length(dur)] )) # * DAYSTOSECONDS)
 
   # output at new time interval
   if (type == "spinterp") {
     # print("spinterp")
-    yp <- spinterp(t, cumdaily, xp)
+    #plot(t, cumdaily)
+    tfactor <- mean(diff(t)) # transform dates so not a huge gap
+    #tfactor <- 1
+    yp <- spinterp(t/tfactor, cumdaily, xp/tfactor)
+    #plot(xp, yp)
   } else if (type == "spline") {
     # print("spline")
     f.yp <- splinefun(t, cumdaily, method = "hyman")
     yp <- f.yp(xp)
+    #plot(yp)
   } else if (type == "schum") {
     # print("schum")
     SchumSpline <- schumaker::Schumaker(t, cumdaily)
@@ -101,11 +111,18 @@ spinterpConvert <- function(start, rate, outputInt = (1 / 24), type = "spinterp"
   }
 
   # derivative of spinterp
-  f.spinterp <- splinefun(xp, yp)
-  f.spinterp(xp, deriv = 1)
+  xpyp <- data.frame(xp, yp) %>% na.omit
 
-  xp <- round(xp, 10)
-  df <- data.frame(Date = xp, Data = f.spinterp(xp, deriv = 1) + negativeOffset) #  /DAYSTOSECONDS  )
+  f.spinterp <- splinefun(xpyp, method = "monoH.FC")
+  df <- data.frame(Date = xpyp$xp, Data = f.spinterp(xpyp$xp, deriv = 1) + negativeOffset) #  /DAYSTOSECONDS  )
 
+  #plot(f.spinterp(xp, deriv = 1))
+
+  #xp <- round(xp, 10)
+
+  #(df$Date * 24  %>% as.POSIXct(origin = "1970-01-01")
+
+  #plot(df)
   return(df)
 }
+

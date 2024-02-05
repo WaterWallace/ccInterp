@@ -57,8 +57,8 @@ maxminfun <- function(refx, refy, newts, option = "max", dt = 2) {
   maxfun <- function(t, y, x, option = "max") # look forward and back to pick the max (or min)
   {
     # function looks to either side of point x and outputs the minimum
-    f.qual0 <- approxfun(t, y, method = "constant", ties = option, f = 0)
-    f.qual1 <- approxfun(t, y, method = "constant", ties = option, f = 1)
+    f.qual0 <- approxfun(t, y, method = "constant", ties = option, f = 0, rule = 2)
+    f.qual1 <- approxfun(t, y, method = "constant", ties = option, f = 1, rule = 2)
 
     if (option == "max") {
       return(pmax(f.qual0(x), f.qual1(x)))
