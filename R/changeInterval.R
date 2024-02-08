@@ -2,10 +2,7 @@
 #'
 #' Trapezoidal integration of a time series
 #'
-#' not appropriate for downsampling intervals from hourly back to daily
-#' Use changeInterval() for that.
-#' (even though theoretically spinterpConvert will work fine for downsampling, and in some cases technically preferred)
-#' Using "spinterp" Interpolation over long gaps could have unpredicatable results.
+#' For downsampling intervals, for example hourly to daily.
 #'
 #' @param ts dataframe of posixct time (time in seconds) and an instantaneous value (per second i.e. cumecs), and optionally a quality code
 #' @param dt datatype of the input data, 1 = inst; 2 = fmean
@@ -16,7 +13,11 @@
 #' @param end same as start
 #'
 #' @param offset minutes to offset the averaging window, not the result
-#' @param option "fmean", "inst", "sum"
+#' @param option "fmean", "inst", "sum", "resample"
+#'     fmean Calcaulte a forward mean, i.e. the daily mean for this day
+#'     inst Calculate instantaenous values
+#'     sum Accumulate daily i.e. to calculate a total or volume, units unchanged
+#'     resample interpolate at intervals, no transformation
 #' @param linearInterp adds linearly interpolated points at new interval timestep
 #' leave as true, unpredictable result with false, particularly over long gaps
 #' @param rounded round the time to the hour
@@ -57,13 +58,14 @@
 #' head(hourlyInst)
 #' lines(hourlyInst, col = "orange")
 #' @export
-
 changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
                            end = 0, offset = 0, option = "fmean",
                            linearInterp = TRUE, rounded = TRUE) {
 
 
   stopifnot("duplicate timestamps" = length(ts[,1]) == length(unique(ts[,1])) )
+
+  if(option =="resample"){offset <- 0} # disregard offset for resample
 
   ts[,1] <- as.POSIXct(ts[,1])
   inputts <- ts
@@ -172,6 +174,12 @@ changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
   } else if (option == "inst") {
     # add half a timestep to report an instantaneous mean
     df <- data.frame(Date = newintTS + (timestep / 2), Inst = round(dy / (timestep / 1000), 3))
+  } else if (option == "resample")  {
+    f.resample <- approxfun( ts[,1], ts[,2])
+    df <- data.frame(Date = newintTS, Inst = f.resample(newintTS) )
+  } else {
+    message ("Choose either option = fmean, sum, inst or resample")
+    return(0)
   }
 
   if (length(inputts) == 3) {
@@ -179,8 +187,11 @@ changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
   }
 
   # tidy up
-  df <- df[df[, 1] >=  paste(cullBefore) ,]
-  df <- df[-1,] # remove redundant zero value added as dy
+  df <- df[df[, 1] >= paste(cullBefore), ]
   df <- na.trim(df)
+  df <- df[-nrow(df),] # remove added zero
+
   return(df)
 }
+
+
