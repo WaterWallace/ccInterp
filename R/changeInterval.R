@@ -68,6 +68,9 @@ changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
   names(ts)[1] <- "Date"
   names(ts)[2] <- "value"
 
+  ts$Date <- as.POSIXct(ts$Date)
+  inputts <- ts
+
   if (start == 0)
   {
     if (Interval == "Daily")
@@ -126,9 +129,9 @@ changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
 
     if(dt == 2)
     {
-      f.accum <- approxfun(ts$numDate + 0.5 * mean(diff(ts$numDate)), ts$accum)
+      f.accum <- approxfun(ts$numDate + 1 * mean(diff(ts$numDate)), ts$accum)
     }else{
-      f.accum <- approxfun(ts$numDate - 0.5 * mean(diff(ts$numDate)), ts$accum)
+      f.accum <- approxfun(ts$numDate - 0 * mean(diff(ts$numDate)), ts$accum)
     }
 
     # new dataframe for output timestep
@@ -155,8 +158,9 @@ changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
   newts$Date <- as.POSIXct(newts$Date)
 
   if (length(inputts) == 3) {
-    ts <- maxminfun(inputts[, 1], inputts[, 3], ts, option = "max")
+    newts <- maxminfun(inputts[, 1], inputts[, 3], ts, option = "max")
   }
+  newts[,2] <- round(newts[,2], 3)
 
   return(newts)
 
