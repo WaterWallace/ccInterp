@@ -119,6 +119,7 @@ changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
                         accum = f.accum(newintTS))
   }else{
     stopifnot("other than dt of 1 must be interval data, i.e. daily forward mean" = max(diff(ts$numDate)) == mean(diff(ts$numDate)))
+    stopifnot("select dt of 1(inst), 2(forward mean) or 3(trailing mean)" = max(diff(ts$numDate)) == mean(diff(ts$numDate)))
 
     # accumulate first
     ts <- ts %>% mutate( accum = cumsum(value * c(0,diff(numDate))))
