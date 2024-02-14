@@ -60,138 +60,103 @@
 #' @export
 changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
                            end = 0, offset = 0, option = "fmean",
-                           linearInterp = TRUE, rounded = TRUE) {
-
+                           rounded = TRUE)
+{
 
   stopifnot("duplicate timestamps" = length(ts[,1]) == length(unique(ts[,1])) )
 
-  if(option =="resample"){offset <- 0} # disregard offset for resample
+  names(ts)[1] <- "Date"
+  names(ts)[2] <- "value"
 
-  ts[,1] <- as.POSIXct(ts[,1])
-  inputts <- ts
-
-  # function omits na's, so will interpolate between
-  ts <- na.omit(ts)
-  ts <- ts[, 1:2]
-
-  cullBefore <- ts[1, 1]
-  if (start == 0) {
-    if (Interval == "Daily") {
-      # round to full day
-      # if (ts[1,1] >  round(ts[1,1], units="days") ) cullBefore = ts[1,1]
+  if (start == 0)
+  {
+    if (Interval == "Daily")
+    {
       start <- round.POSIXt(ts[1, 1], units = "days")
-    } else if (Interval == "Hourly") {
-      # if (ts[1,1] >  round(ts[1,1], units="days") ) cullBefore = ts[1,1]
-      # round to full hour
+      timeInterval = 60*60*24
+    }else if ( Interval == "Hourly")
+    {
       start <- round.POSIXt(ts[1, 1], units = "hours")
-    } else {
-      # start at raw value
-
-      if (rounded == TRUE) {
-        # if (ts[1,1] >  round(ts[1,1], units="days") ) cullBefore = ts[1,1]
-        start <- round.POSIXt(ts[1, 1], units = "hours")
-      } else {
-        start <- ts[1, 1]
-      }
+      timeInterval = 60*60
+    }else if (rounded == TRUE){
+      start <- round.POSIXt(ts[1, 1], units = "hours")
+    }else{
+      start <- ts[1, 1]
     }
-  } else {
-    start <- as.POSIXct(start, origin = "1970-01-01")
+  }else{
+    # start should already be posixct time
   }
+
   if (end == 0) {
     end <- ts[nrow(ts), 1]
   } else {
     end <- as.POSIXct(end, origin = "1970-01-01")
   }
 
+  # set to numeric
+  ts <- ts %>% mutate( numDate = as.numeric(Date))
 
-  # set time step based on interval
-  if (Interval == "Daily") {
-    timestep <- 24 * 60 * 60
-  } else if (Interval == "Hourly") {
-    timestep <- 1 * 60 * 60
-  } else {
-    # assume an integer
-    timestep <- Interval * 60
-  }
+  # new time sequence
+  newintTS <- seq(as.numeric(start)+offset, max(ts$numDate) , by = timeInterval)
 
-  if (linearInterp) {
-    # add new points at timestamp boundaries
-    newintTS <- seq(start + offset * 60, end, by = timestep)
-    f.timeties <- approxfun(ts[, 1], ts[, 2])
-    lineardf <- data.frame(newintTS, f.timeties(newintTS))
-    # plot(lineardf)
-    # merge lineardf and ts
-    names(lineardf) <- names(ts)
-    merged <- rbind(lineardf, ts)
+  if(dt == 1){
+    # merge new timestamps into original dataset with linear interpolation
+    f.timeties <- approxfun(ts$numDate, ts$value)
+    linearts <- data.frame(numDate = newintTS, value = f.timeties(newintTS))
+    merged <- rbind(linearts, dplyr::select(ts, c(numDate, value)))
     merged <- merged[order(merged[, 1]), ]
     ts <- na.omit(distinct(merged))
+    #ts$numDate %>% as.POSIXct
+
+    # convert rate to cumulative volume
+    ts <- ts %>% mutate( accum = cumsum(value * c(0, diff(numDate))))
+
+    # linear lookup accum
+    f.accum <- approxfun(ts$numDate, ts$accum)
+
+    # new dataframe for output timestep
+    newts <- data.frame(Date = newintTS,
+                        accum = f.accum(newintTS))
+  }else{
+    stopifnot("other than dt of 1 must be interval data, i.e. daily forward mean" = max(diff(ts$numDate)) == mean(diff(ts$numDate)))
+
+    # accumulate first
+    ts <- ts %>% mutate( accum = cumsum(value * c(0,diff(numDate))))
+
+    if(dt == 2)
+    {
+      f.accum <- approxfun(ts$numDate + 0.5 * mean(diff(ts$numDate)), ts$accum)
+    }else{
+      f.accum <- approxfun(ts$numDate - 0.5 * mean(diff(ts$numDate)), ts$accum)
+    }
+
+    # new dataframe for output timestep
+    newts <- data.frame(Date = newintTS,
+                        accum = f.accum(newintTS))
+
   }
 
-  # duration between this point and the previous point
-  ts$dur <- c(0, diff(as.numeric(ts[, 1]))) # duration in seconds
+  # add half a timestep for instantaneous
+  if(option == "inst"){
+    f.spline <- splinefun(newts$Date + 0.5 * mean(diff(newts$Date)), newts$accum  )
+    newts$Inst =   f.spline(newintTS, deriv = 1)
+    newts <- newts %>% dplyr::select(c(Date, Inst))
 
-  # calculate a volume
-
-  if (dt == 1) {
-    # same as above, except getting the average of
-    # point data, or interval data (means, with value at centre point)
-    averageRate <- (0.5 * (c(ts[, 2], 0) + c(0, ts[, 2])))
-    kilolitres <- c(ts$dur, 0) * averageRate # duration in seconds times average of timeseries values in rate per second
-    kilolitres <- head(kilolitres, -1)
-
-    ts$megalitres <- kilolitres / 1000
+  }else if(option == "fmean")
+  {
+    newts$Fmean <- c(diff(newts$accum)/timeInterval,NA )
+    newts <- newts %>% dplyr::select(c(Date, Fmean))
+  }else if(option == "tmean")
+  {
+    newts$Tmean <- c(NA,diff(newts$accum)/timeInterval )
+    newts <- newts %>% dplyr::select(c(Date, Tmean))
   }
-  if (dt == 2) {
-    # for forward mean data
-    kilolitres <- ts$dur * ts[, 2] # multiply duration in seconds by cubic metres per second, to equal total cubic metres (kilolitres)
-    ts$megalitres <- kilolitres / 1000 # divide by 1000 to equal total megalitres
-  }
-
-  # cumulative sum
-  ts$accum <- cumsum(ts$megalitres)
-  # new time sequence for new interval
-  newintTS <- seq(start + offset * 60, end, by = timestep)
-
-  # delta y
-  if (linearInterp) {
-    f.linear <- approxfun(ts[, 1], ts$accum)
-    newTS <- f.linear(newintTS)
-  } else {
-    f.accum <- splinefun(ts[, 1], ts$accum, method = "fmm")
-    newTS <- f.accum(newintTS)
-  }
-
-  dy <- c(diff(newTS), 0)
-
-
-  # delta y / delta time
-  if (option == "fmean") {
-    df <- data.frame(Date = newintTS, FMean = round(dy / (timestep / 1000), 3)) # convert back from ML/day to cumecs
-  } else if (option == "sum") {
-    # output total difference in cumulative
-    # convert back to KL i.e. cubic metres
-    df <- data.frame(Date = newintTS, Sum = round(newTS * 1000, 3))
-  } else if (option == "inst") {
-    # add half a timestep to report an instantaneous mean
-    df <- data.frame(Date = newintTS + (timestep / 2), Inst = round(dy / (timestep / 1000), 3))
-  } else if (option == "resample")  {
-    f.resample <- approxfun( ts[,1], ts[,2])
-    df <- data.frame(Date = newintTS, Inst = f.resample(newintTS) )
-  } else {
-    message ("Choose either option = fmean, sum, inst or resample")
-    return(0)
-  }
+  newts$Date <- as.POSIXct(newts$Date)
 
   if (length(inputts) == 3) {
-    df <- maxminfun(inputts[, 1], inputts[, 3], df, option = "max")
+    ts <- maxminfun(inputts[, 1], inputts[, 3], ts, option = "max")
   }
 
-  # tidy up
-  df <- df[df[, 1] >= paste(cullBefore), ]
-  df <- na.trim(df)
-  df <- df[-nrow(df),] # remove added zero
+  return(newts)
 
-  return(df)
 }
-
-
