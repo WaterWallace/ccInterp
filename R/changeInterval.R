@@ -71,20 +71,23 @@ changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
   ts$Date <- as.POSIXct(ts$Date)
   inputts <- ts
 
+  offset <- offset * 60
   if (start == 0)
   {
     if (Interval == "Daily")
     {
       start <- round.POSIXt(ts[1, 1], units = "days")
-      timeInterval = 60*60*24
+      Interval = 60*60*24
     }else if ( Interval == "Hourly")
     {
       start <- round.POSIXt(ts[1, 1], units = "hours")
-      timeInterval = 60*60
+      Interval = 60*60
     }else if (rounded == TRUE){
       start <- round.POSIXt(ts[1, 1], units = "hours")
+      Interval = Interval*60
     }else{
       start <- ts[1, 1]
+      Interval = Interval*60
     }
   }else{
     # start should already be posixct time
@@ -100,7 +103,7 @@ changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
   ts <- ts %>% mutate( numDate = as.numeric(Date))
 
   # new time sequence
-  newintTS <- seq(as.numeric(start)+offset, max(ts$numDate) , by = timeInterval)
+  newintTS <- seq(as.numeric(start)+offset, max(ts$numDate) , by = Interval)
 
   if(dt == 1){
     # merge new timestamps into original dataset with linear interpolation
@@ -109,7 +112,6 @@ changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
     merged <- rbind(linearts, dplyr::select(ts, c(numDate, value)))
     merged <- merged[order(merged[, 1]), ]
     ts <- na.omit(distinct(merged))
-    #ts$numDate %>% as.POSIXct
 
     # convert rate to cumulative volume
     ts <- ts %>% mutate( accum = cumsum(value * c(0, diff(numDate))))
@@ -148,11 +150,11 @@ changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
 
   }else if(option == "fmean")
   {
-    newts$Fmean <- c(diff(newts$accum)/timeInterval,NA )
+    newts$Fmean <- c(diff(newts$accum)/Interval,NA )
     newts <- newts %>% dplyr::select(c(Date, Fmean))
   }else if(option == "tmean")
   {
-    newts$Tmean <- c(NA,diff(newts$accum)/timeInterval )
+    newts$Tmean <- c(NA,diff(newts$accum)/Interval )
     newts <- newts %>% dplyr::select(c(Date, Tmean))
   }
   newts$Date <- as.POSIXct(newts$Date)
