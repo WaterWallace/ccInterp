@@ -94,6 +94,3 @@ cciDespike <- function(spiky, hoursAvg = 3, stdevs = 2, doPlot = FALSE)
 
   return (spiky[!spiky[,1] %in% removedPoints[,1],])
 }
-
-
-

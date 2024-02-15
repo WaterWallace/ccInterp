@@ -150,19 +150,20 @@ changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
 
   }else if(option == "fmean")
   {
-    newts$Fmean <- c(diff(newts$accum)/Interval,NA )
-    newts <- newts %>% dplyr::select(c(Date, Fmean))
+    newts$FMean <- c(diff(newts$accum)/Interval,NA )
+    newts <- newts %>% dplyr::select(c(Date, FMean))
   }else if(option == "tmean")
   {
-    newts$Tmean <- c(NA,diff(newts$accum)/Interval )
-    newts <- newts %>% dplyr::select(c(Date, Tmean))
+    newts$TMean <- c(NA,diff(newts$accum)/Interval )
+    newts <- newts %>% dplyr::select(c(Date, TMean))
   }
   newts$Date <- as.POSIXct(newts$Date)
 
   if (length(inputts) == 3) {
-    newts <- maxminfun(inputts[, 1], inputts[, 3], ts, option = "max")
+    newts <- maxminfun(inputts[, 1], inputts[, 3], newts, option = "max")
   }
   newts[,2] <- round(newts[,2], 3)
+  newts <- na.omit(newts)
 
   return(newts)
 

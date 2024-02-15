@@ -58,6 +58,9 @@
 #'
 #'
 #'
+#'
+#'
+
 ccInterpFilter <- function(ts, hours = 24, discardbelowzero = FALSE,
                            centred = FALSE, type = "spinterp") {
 

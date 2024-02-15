@@ -12,7 +12,6 @@ changeInterval(
   end = 0,
   offset = 0,
   option = "fmean",
-  linearInterp = TRUE,
   rounded = TRUE
 )
 }
@@ -30,12 +29,16 @@ i.e. "2016-12-17 05:00" or numeric, seconds since "1970-01-01" i.e. 1481914800}
 
 \item{offset}{minutes to offset the averaging window, not the result}
 
-\item{option}{"fmean", "inst", "sum"}
+\item{option}{"fmean", "inst", "sum", "resample"
+fmean Calcaulte a forward mean, i.e. the daily mean for this day
+inst Calculate instantaenous values
+sum Accumulate daily i.e. to calculate a total or volume, units unchanged
+resample interpolate at intervals, no transformation}
+
+\item{rounded}{round the time to the hour}
 
 \item{linearInterp}{adds linearly interpolated points at new interval timestep
 leave as true, unpredictable result with false, particularly over long gaps}
-
-\item{rounded}{round the time to the hour}
 }
 \value{
 dataframe with tiemstamp as posixct a trapezoidal integrated rate and quality code if included.
@@ -44,10 +47,7 @@ dataframe with tiemstamp as posixct a trapezoidal integrated rate and quality co
 Trapezoidal integration of a time series
 }
 \details{
-not appropriate for downsampling intervals from hourly back to daily
-Use changeInterval() for that.
-(even though theoretically spinterpConvert will work fine for downsampling, and in some cases technically preferred)
-Using "spinterp" Interpolation over long gaps could have unpredicatable results.
+For downsampling intervals, for example hourly to daily.
 }
 \examples{
 

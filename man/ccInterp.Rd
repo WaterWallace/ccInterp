@@ -2,6 +2,7 @@
 % Please edit documentation in R/ccInterp.R
 \docType{package}
 \name{ccInterp}
+\alias{ccInterp-package}
 \alias{ccInterp}
 \title{Combined Cumulative Interpolation Filter}
 \description{
