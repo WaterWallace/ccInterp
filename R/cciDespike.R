@@ -29,10 +29,20 @@
 #' points(despikedD, col="black", pch=16)
 #' @export
 
-cciDespike <- function(spiky, hoursAvg = 3, stdevs = 2, doPlot = FALSE)
+cciDespike <- function(spiky, hoursAvg = 3, stdevs = 3, doPlot = FALSE)
 {
 
-  spinterpData <- ccInterpFilter(spiky, hoursAvg, centred=FALSE)
+  f.spline <- splinefun(spiky[,1], spiky[,2])
+  spiky$dydx <- f.spline(spiky[,1], deriv = 1)
+
+  spiky$Filter <- 0
+  spiky$Filter[ abs( spiky$dydx ) > sd(spiky$dydx) * 3  ] <- 1
+
+  removedPoints <- spiky[spiky$Filter == 1,]
+
+  spiky <- spiky[spiky$Filter == 0,]
+
+  spinterpData <- ccInterpFilter(data.frame(spiky[,1], spiky[,2]), hoursAvg, centred=FALSE)
 
   # 95% confidence
   stdev <- rowSds(as.matrix(spinterpData[2:(length(spinterpData) -1 )]  ))
@@ -43,8 +53,13 @@ cciDespike <- function(spiky, hoursAvg = 3, stdevs = 2, doPlot = FALSE)
   f.upper <- approxfun(spinterpConfi$spinterpData.Date, spinterpConfi$upper)
   f.lower <- approxfun(spinterpConfi$spinterpData.Date, spinterpConfi$lower)
 
-  spinterpDespiked <- spiky[spiky[,2] <= f.upper(spiky[,1]) & spiky[,2] >= f.lower(spiky[,1]),]
-  removedPoints <- spiky[spiky[,2] > f.upper(spiky[,1]) | spiky[,2] < f.lower(spiky[,1]),]
+  spinterpDespiked <- spiky[(spiky[,2] <= f.upper(spiky[,1]) & spiky[,2] >= f.lower(spiky[,1])) ,]
+  removedPoints <- rbind( removedPoints,
+                          spiky[(spiky[,2] > f.upper(spiky[,1]) | spiky[,2] < f.lower(spiky[,1])),])
+
+
+  spinterpDespiked <- spinterpDespiked %>% select(-c(Filter, dydx))
+  removedPoints <- removedPoints %>% select(-c(Filter, dydx))
 
   f.spinterpDespiked <- approxfun(spinterpDespiked)
   removedPoints$resid <- pmax(
@@ -55,21 +70,24 @@ cciDespike <- function(spiky, hoursAvg = 3, stdevs = 2, doPlot = FALSE)
   removedPoints <- na.omit(removedPoints)
 
   SixHourlyResiduals <- changeInterval(data.frame(removedPoints[,1], removedPoints$resid), Interval = 6*60)
-
   SixHourlyResiduals$SD <- rollapply(SixHourlyResiduals$FMean,width=10,FUN=sd,fill=NA,align="c")
 
+  points(SixHourlyResiduals$Date, SixHourlyResiduals$FMean, col="blue")
+
+
   f.SD <- approxfun(SixHourlyResiduals$Date, SixHourlyResiduals$SD, na.rm=TRUE, rule=2)
-  removedPoints <- removedPoints[ abs(removedPoints$resid) > f.SD(removedPoints[,1]), ]
+
+  removedPoints <- removedPoints[ abs(removedPoints$resid) > stdevs * f.SD(removedPoints[,1]), ]
 
   if(doPlot)
   {
-    plot(spiky)
+    plot(spiky[,1], spiky[,2])
 
     upperLine <- data.frame( x = rev(spiky[,1]),
-                             y = rev(f.upper(spiky[,1])+f.SD(spiky[,1]) )
+                             y = rev(f.upper(spiky[,1])+stdevs * f.SD(spiky[,1]) )
     )
     bottomLine <- data.frame(x = spiky[,1],
-                             y = f.lower(spiky[,1])-f.SD(spiky[,1])
+                             y = f.lower(spiky[,1])-stdevs * f.SD(spiky[,1])
     )
     bigshape <- rbind(bottomLine, upperLine)
 
@@ -92,5 +110,5 @@ cciDespike <- function(spiky, hoursAvg = 3, stdevs = 2, doPlot = FALSE)
 
   }
 
-  return (spiky[!spiky[,1] %in% removedPoints[,1],])
+  return (spiky[!spiky[,1] %in% removedPoints[,1],] %>% dplyr::select( -c(dydx, Filter)))
 }
