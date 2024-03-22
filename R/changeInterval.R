@@ -168,3 +168,4 @@ changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
   return(newts)
 
 }
+

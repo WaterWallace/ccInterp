@@ -60,10 +60,9 @@
 #'
 #'
 #'
-
+#'
 ccInterpFilter <- function(ts, hours = 24, discardbelowzero = FALSE,
                            centred = FALSE, type = "spinterp") {
-
   # Trim times up, won't use part hours
   if (lubridate::ceiling_date(ts[1, 1], unit = "hours") > ts[1, 1]) {
     roundedtime <- lubridate::ceiling_date(ts[1, 1], unit = "hours") # round up
@@ -99,11 +98,15 @@ ccInterpFilter <- function(ts, hours = 24, discardbelowzero = FALSE,
 
     # convert to numeric
     numdate <- as.numeric(as.POSIXct(daily$Date, format = format)) / 60 / 60 / 24
+
     # create hourly spinterp data ( interpolation of cumulative daily discharge )
     spinterpSegment <- spinterpConvert(numdate, daily$FMean, type = type)
     # remove offset again
     spinterpSegment$Data <- spinterpSegment$Data + offset
     names(spinterpSegment)[2] <- paste("Hour",i,sep="")
+
+    spinterpSegment$Date <- as.POSIXct(spinterpSegment$Date*24*60*60, origin = "1970-01-01") %>%
+    round("min")
 
     if(i > 0)
     {
@@ -122,6 +125,7 @@ ccInterpFilter <- function(ts, hours = 24, discardbelowzero = FALSE,
   } else {
     spinterpData <- cbind(spinterpData, avg = rowMeans(spinterpData[-1]))
   }
-  spinterpData$Date <- as.POSIXct(spinterpData$Date * 60 * 60 * 24, origin = "1970-01-01")
+  #spinterpData$Date <- as.POSIXct(spinterpData$Date * 60 * 60 * 24, origin = "1970-01-01")
   return(spinterpData)
 }
+

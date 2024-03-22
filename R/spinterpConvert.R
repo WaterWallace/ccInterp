@@ -47,7 +47,6 @@
 #'
 
 
-
 spinterpConvert <- function(start, rate, outputInt = (1 / 24), type = "spinterp", dt = 2) {
   if (dt == 1) # if data is of point type, convert to an interval mean at from start point to end point
   {
@@ -91,7 +90,7 @@ spinterpConvert <- function(start, rate, outputInt = (1 / 24), type = "spinterp"
   if (type == "spinterp") {
     # print("spinterp")
     #plot(t, cumdaily)
-    tfactor <- mean(diff(t)) # transform dates so not a huge gap
+    tfactor <- median(diff(t)) # transform dates so not a huge gap
     #tfactor <- 1
     yp <- spinterp(t/tfactor, cumdaily, xp/tfactor)
     #plot(xp, yp)
