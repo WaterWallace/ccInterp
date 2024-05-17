@@ -102,32 +102,38 @@ changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
   # set to numeric
   ts <- ts %>% mutate( numDate = as.numeric(Date))
 
+  #range(ts$Date) %>% round("hours")
+
   # new time sequence
-  newintTS <- seq(as.numeric(start)+offset, max(ts$numDate) , by = Interval)
+  newintTS <- seq(start+offset*60, end , by = Interval)
 
   if(dt == 1){
     # merge new timestamps into original dataset with linear interpolation
-    f.timeties <- approxfun(ts$numDate, ts$value)
-    linearts <- data.frame(numDate = newintTS, value = f.timeties(newintTS))
-    merged <- rbind(linearts, dplyr::select(ts, c(numDate, value)))
-    merged <- merged[order(merged[, 1]), ]
+    f.timeties <- approxfun(ts$Date, ts$value)
+    linearts <- data.frame(Date = newintTS, value = f.timeties(newintTS))
+    merged <- rbind(linearts, dplyr::select(ts, c(Date, value)))
+    merged <- merged[order(merged$Date), ]
     ts <- na.omit(distinct(merged))
 
     # convert rate to cumulative volume
-    ts <- ts %>% mutate( accum = cumsum(value * c(0, diff(numDate))))
+    #ts <- ts %>% mutate( accum = cumsum(value * c(0, diff(numDate))))
+    ts <- ts %>% mutate( accum = cumtrapz(Date %>% as.numeric, value) )
 
     # linear lookup accum
-    f.accum <- approxfun(ts$numDate, ts$accum)
+    f.accum <- approxfun(ts$Date, ts$accum)
 
     # new dataframe for output timestep
     newts <- data.frame(Date = newintTS,
                         accum = f.accum(newintTS))
+
+
   }else{
     stopifnot("other than dt of 1 must be interval data, i.e. daily forward mean" = max(diff(ts$numDate)) == mean(diff(ts$numDate)))
     stopifnot("select dt of 1(inst), 2(forward mean) or 3(trailing mean)" = max(diff(ts$numDate)) == mean(diff(ts$numDate)))
 
     # accumulate first
     ts <- ts %>% mutate( accum = cumsum(value * c(0,diff(numDate))))
+    #ts <- ts %>% mutate( accum = cumtrapz(numDate, value) )
 
     if(dt == 2)
     {
@@ -144,8 +150,10 @@ changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
 
   # add half a timestep for instantaneous
   if(option == "inst"){
-    f.spline <- splinefun(newts$Date + 0.5 * mean(diff(newts$Date)), newts$accum  )
-    newts$Inst =   f.spline(newintTS, deriv = 1)
+    #f.spline <- splinefun(newts$Date + 0.5 * mean(diff(newts$Date)), newts$accum  )
+    f.spline <- splinefun(newts$Date, newts$accum )
+    #newts$Inst <- f.spline(newintTS, deriv = 1)
+    newts <- newts %>% mutate(Inst = f.spline(Date, deriv = 1))
     newts <- newts %>% dplyr::select(c(Date, Inst))
 
   }else if(option == "fmean")
@@ -168,4 +176,5 @@ changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
   return(newts)
 
 }
+
 

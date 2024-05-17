@@ -45,8 +45,6 @@
 #'
 #'
 #'
-
-
 spinterpConvert <- function(start, rate, outputInt = (1 / 24), type = "spinterp", dt = 2) {
   if (dt == 1) # if data is of point type, convert to an interval mean at from start point to end point
   {
