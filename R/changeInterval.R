@@ -71,7 +71,6 @@ changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
   ts$Date <- as.POSIXct(ts$Date)
   inputts <- ts
 
-  offset <- offset * 60
   if (start == 0)
   {
     if (Interval == "Daily")
@@ -176,5 +175,4 @@ changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
   return(newts)
 
 }
-
 
