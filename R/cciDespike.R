@@ -72,9 +72,6 @@ cciDespike <- function(spiky, hoursAvg = 3, stdevs = 3, doPlot = FALSE)
   SixHourlyResiduals <- changeInterval(data.frame(removedPoints[,1], removedPoints$resid), Interval = 6*60)
   SixHourlyResiduals$SD <- rollapply(SixHourlyResiduals$FMean,width=10,FUN=sd,fill=NA,align="c")
 
-  points(SixHourlyResiduals$Date, SixHourlyResiduals$FMean, col="blue")
-
-
   f.SD <- approxfun(SixHourlyResiduals$Date, SixHourlyResiduals$SD, na.rm=TRUE, rule=2)
 
   removedPoints <- removedPoints[ abs(removedPoints$resid) > stdevs * f.SD(removedPoints[,1]), ]
