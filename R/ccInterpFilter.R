@@ -61,6 +61,7 @@
 #'
 #'
 #'
+#'
 ccInterpFilter <- function(ts, hours = 24, discardbelowzero = FALSE,
                            centred = FALSE, type = "spinterp") {
   # Trim times up, won't use part hours
@@ -92,7 +93,6 @@ ccInterpFilter <- function(ts, hours = 24, discardbelowzero = FALSE,
       offset <- min(daily$FMean)
       daily$FMean <- daily$FMean - offset
     }
-
     daily$FMean[daily$FMean < 0] <- 0
     daily[is.na(daily)] <- 0
 
@@ -128,4 +128,5 @@ ccInterpFilter <- function(ts, hours = 24, discardbelowzero = FALSE,
   #spinterpData$Date <- as.POSIXct(spinterpData$Date * 60 * 60 * 24, origin = "1970-01-01")
   return(spinterpData)
 }
+
 

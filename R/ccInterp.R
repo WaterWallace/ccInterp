@@ -4,7 +4,7 @@
 #' Output data as Hourly.
 #'
 #'
-#' @docType package
+#' @aliases ccInterp-package
 #'
 #' @author Stephen Wallace \email{stephen.wallace@des.qld.gov.au}
 #'
