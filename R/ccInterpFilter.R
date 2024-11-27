@@ -78,6 +78,8 @@ ccInterpFilter <- function(ts, hours = 24, discardbelowzero = FALSE,
     ts <- ts[ts[,1] > roundedtime,]
     ts <- rbind(df, ts)
   }
+
+
   # converts time series to daily, and cumulates, interpolates, and then gets the derivative.
   # does this for each hour, i.e. for 24 hour averaging it will do it 24 times offset an hour each time
   # the result is the average of all hours interpolated.
@@ -96,11 +98,14 @@ ccInterpFilter <- function(ts, hours = 24, discardbelowzero = FALSE,
     daily$FMean[daily$FMean < 0] <- 0
     daily[is.na(daily)] <- 0
 
+
     # convert to numeric
     numdate <- as.numeric(as.POSIXct(daily$Date, format = format)) / 60 / 60 / 24
 
     # create hourly spinterp data ( interpolation of cumulative daily discharge )
     spinterpSegment <- spinterpConvert(numdate, daily$FMean, type = type)
+
+
     # remove offset again
     spinterpSegment$Data <- spinterpSegment$Data + offset
     names(spinterpSegment)[2] <- paste("Hour",i,sep="")
