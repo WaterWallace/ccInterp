@@ -42,6 +42,9 @@
 #' # DHourly <- spinterpConvert(D$x, D$y, type = "linear")
 #' # lines(DHourly, col="green")
 #' @export
+#'
+#'
+#'
 spinterpConvert <- function(start, rate, outputInt = (1 / 24), type = "spinterp", dt = 2) {
   if (dt == 1) # if data is of point type, convert to an interval mean at from start point to end point
   {
@@ -65,14 +68,13 @@ spinterpConvert <- function(start, rate, outputInt = (1 / 24), type = "spinterp"
 
   start <- as.numeric(start)
   nt <- length(start)
+  t <- c(start, start[nt] + 1)
 
-  t <- c(start, start[nt] +  median(diff(start)))
-
-    # duration between input data points # in days
+  # duration between input data points # in days
   dur <- c(diff(t), 0) # t[2]-t[1]  #c(0,diff(t))
 
   # create a time sequence for output data
-  xp <- seq(t[1], t[nt+1], by = outputInt)
+  xp <- seq(t[1], t[nt], by = outputInt)
 
   negativeOffset <- min(rate)
   rate <- rate - negativeOffset
@@ -105,14 +107,19 @@ spinterpConvert <- function(start, rate, outputInt = (1 / 24), type = "spinterp"
     yp <- f.yp(xp)
   }
 
-
+  # derivative of spinterp
   xpyp <- data.frame(xp, yp) %>% na.omit
 
-  # derivative of spinterp
   f.spinterp <- splinefun(xpyp, method = "monoH.FC")
   df <- data.frame(Date = xpyp$xp, Data = f.spinterp(xpyp$xp, deriv = 1) + negativeOffset) #  /DAYSTOSECONDS  )
 
+  #plot(f.spinterp(xp, deriv = 1))
 
+  #xp <- round(xp, 10)
+
+  #(df$Date * 24  %>% as.POSIXct(origin = "1970-01-01")
+
+  #plot(df)
   return(df)
 }
 

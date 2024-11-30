@@ -44,8 +44,8 @@ butterworthFilter <- function(data)
   dt =  as.numeric( median((diff(t))) , units="secs" ) #;% sampling timestep (seconds)
   Fs = 1/(dt)#; % Sampling Frequency (Hz = samples/sec)
   Fn = Fs/2#; % Nyquist Frequency
-  Wp = (1/(30*60^2))/Fn#; % Filter Passband (Normalised)
-  Ws = (1/(40*60^2))/Fn#; % Filter Stopband (Normalised)
+  Wp = (1/(30*60*60))/Fn#; % Filter Passband (Normalised)
+  Ws = (1/(40*60*60))/Fn#; % Filter Stopband (Normalised)
 
   btord <- signal::buttord(Wp,Ws,Rp,Rs)
   bw <- signal::butter(btord)
