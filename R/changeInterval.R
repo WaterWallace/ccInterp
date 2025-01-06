@@ -90,6 +90,15 @@ changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
     }
   }else{
     # start should already be posixct time
+    if (Interval == "Daily")
+    {
+      Interval = 60*60*24
+    }else if ( Interval == "Hourly")
+    {
+      Interval = 60*60
+    }else{
+      Interval = Interval*60
+    }
   }
 
   if (end == 0) {
@@ -169,8 +178,13 @@ changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
   if (length(inputts) == 3) {
     newts <- maxminfun(inputts[, 1], inputts[, 3], newts, option = "max")
   }
-  newts[,2] <- round(newts[,2], 3)
+  newts[,2] <- round(newts[,2], 4)
   newts <- na.omit(newts)
+
+  if(option == "sum")
+  {
+    newts$accum <- newts$accum - newts$accum[1]
+  }
 
   return(newts)
 

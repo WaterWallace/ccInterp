@@ -48,7 +48,7 @@ StevesCoolRandomTS <- function(maxFlow=500*runif(1), maxNoise=500*runif(1), obs=
 
   if(smoothed)
   {
-    hourly <- changeInterval(data.frame(df$Time, df$Signal), Interval = "Hourly", option="inst", offset = 30)
+    hourly <- changeInterval(data.frame(df$Time, df$Signal), Interval = "Hourly", option="inst")
     godin <- godinFilter(hourly$Inst)
     df <- data.frame(Time = hourly$Date, Signal = godin)
     df <- na.omit(df)
@@ -63,6 +63,15 @@ StevesCoolRandomTS <- function(maxFlow=500*runif(1), maxNoise=500*runif(1), obs=
   d2 <- 2 * sin( 2*pi * t) *
     10 * sin( ( 1/365.25 ) * 2*pi * t+180)
   df$Noise <- d1+d2
+
+  # Define parameters
+  days <- 1:365         # Days of the year
+  amplitude <- 1        # Amplitude of the sine wave
+  phase_shift <- 0      # Phase shift (in radians)
+
+  # Calculate the sine wave
+  annual <- sin((2 * pi / 365) * t + 0) ^ 2
+  df$Signal <- df$Signal + ( annual + abs(min(annual) ))
 
   df$Signal <- round( df$Signal / (max(abs(df$Signal)) / maxFlow) , 3 )
   df$Noise <- round( df$Noise / (max(df$Noise)/maxNoise), 3 )
