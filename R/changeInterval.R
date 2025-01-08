@@ -62,6 +62,7 @@ changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
                            end = 0, offset = 0, option = "fmean",
                            rounded = TRUE)
 {
+  instAsSpline <- FALSE
 
   stopifnot("duplicate timestamps" = length(ts[,1]) == length(unique(ts[,1])) )
 
@@ -76,17 +77,23 @@ changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
     if (Interval == "Daily")
     {
       start <- round.POSIXt(ts[1, 1], units = "days")
-      Interval = 60*60*24
+      Interval <- 60*60*24
     }else if ( Interval == "Hourly")
     {
       start <- round.POSIXt(ts[1, 1], units = "hours")
       Interval = 60*60
+    }else if ( Interval == "Monthly")
+    {
+      start <- lubridate::ceiling_date(ts[1,1], unit = "month")
+    }else if (Interval == "Annual"){
+      start <- lubridate::ceiling_date(ts[1,1], unit = "year")
+      lubridate::floor_date(ts[1,1], unit = "month")
     }else if (rounded == TRUE){
       start <- round.POSIXt(ts[1, 1], units = "hours")
-      Interval = Interval*60
+      Interval <- Interval*60
     }else{
       start <- ts[1, 1]
-      Interval = Interval*60
+      Interval <- Interval*60
     }
   }else{
     # start should already be posixct time
@@ -96,7 +103,7 @@ changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
     }else if ( Interval == "Hourly")
     {
       Interval = 60*60
-    }else{
+    }else if ( Interval != "Monthly" & Interval != "Annual" ){
       Interval = Interval*60
     }
   }
@@ -107,13 +114,24 @@ changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
     end <- as.POSIXct(end, origin = "1970-01-01")
   }
 
+
   # set to numeric
   ts <- ts %>% mutate( numDate = as.numeric(Date))
-
-  #range(ts$Date) %>% round("hours")
-
-  # new time sequence
-  newintTS <- seq(start+offset*60, end , by = Interval)
+  if(Interval == "Monthly")
+  {
+    newintTS <- seq(as.Date(start)+1, as.Date(end), by = "1 month")
+  }else if (Interval == "Annual")
+  {
+    newintTS <- seq(as.Date(start)+1, as.Date(end), by = "1 year")
+  }else
+  {
+    # new time sequence
+    if(option == "inst" & !instAsSpline)
+    {
+      offset <- ( Interval / 60 ) / 2
+    }
+    newintTS <- seq(start+offset*60, end , by = Interval)
+  }
 
   if(dt == 1){
     # merge new timestamps into original dataset with linear interpolation
@@ -137,7 +155,7 @@ changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
 
   }else{
     stopifnot("other than dt of 1 must be interval data, i.e. daily forward mean" = max(diff(ts$numDate)) == mean(diff(ts$numDate)))
-    stopifnot("select dt of 1(inst), 2(forward mean) or 3(trailing mean)" = max(diff(ts$numDate)) == mean(diff(ts$numDate)))
+    stopifnot("select dt of 1(inst), 2(forward mean) or 3(trailing mean)" = ( dt == 1 | dt == 2 | dt ==3 ) )
 
     # accumulate first
     ts <- ts %>% mutate( accum = cumsum(value * c(0,diff(numDate))))
@@ -156,14 +174,23 @@ changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
 
   }
 
+
   # add half a timestep for instantaneous
   if(option == "inst"){
-    #f.spline <- splinefun(newts$Date + 0.5 * mean(diff(newts$Date)), newts$accum  )
-    f.spline <- splinefun(newts$Date, newts$accum )
-    #newts$Inst <- f.spline(newintTS, deriv = 1)
-    newts <- newts %>% mutate(Inst = f.spline(Date, deriv = 1))
-    newts <- newts %>% dplyr::select(c(Date, Inst))
+    if(instAsSpline)
+    {
+      newintTS <- seq(start+offset*60, end , by = Interval)
 
+      #f.spline <- splinefun(newts$Date + 0.5 * mean(diff(newts$Date)), newts$accum  ) # this would be wrong
+      f.spline <- splinefun(newts$Date, newts$accum )
+      #newts$Inst <- f.spline(newintTS, deriv = 1)
+      newts <- newts %>% mutate(Inst = f.spline(Date, deriv = 1))
+      newts <- newts %>% dplyr::select(c(Date, Inst))
+    }else{
+      # this is just calculating forward mean
+      newts$Inst <- c(diff(newts$accum)/Interval,NA )
+      newts <- newts %>% dplyr::select(c(Date, Inst))
+    }
   }else if(option == "fmean")
   {
     newts$FMean <- c(diff(newts$accum)/Interval,NA )
@@ -185,8 +212,8 @@ changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
   {
     newts$accum <- newts$accum - newts$accum[1]
   }
+  newts$Date <- newts$Date + offset*60
 
   return(newts)
 
 }
-
