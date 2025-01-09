@@ -13,6 +13,7 @@
 #' @param end same as start
 #'
 #' @param offset minutes to offset the averaging window, not the result
+#'     for Interval "Annual", offset is the start month, i.e. 10 for October
 #' @param option "fmean", "inst", "sum", "resample"
 #'     fmean Calcaulte a forward mean, i.e. the daily mean for this day
 #'     inst Calculate instantaenous values
@@ -58,7 +59,8 @@
 #' head(hourlyInst)
 #' lines(hourlyInst, col = "orange")
 #' @export
-changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
+#'
+ChangeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
                            end = 0, offset = 0, option = "fmean",
                            rounded = TRUE)
 {
@@ -86,8 +88,14 @@ changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
     {
       start <- lubridate::ceiling_date(ts[1,1], unit = "month")
     }else if (Interval == "Annual"){
-      start <- lubridate::ceiling_date(ts[1,1], unit = "year")
-      lubridate::floor_date(ts[1,1], unit = "month")
+      #start <- lubridate::ceiling_date(ts[1,1], unit = "year")
+      start <- lubridate::floor_date(ts[1,1], unit = "month")
+      offset <- offset - lubridate::month(start)
+      if (offset < 0) offset <- offset + 12
+      start <- start
+      start <- seq(as.Date(start)+1, length.out = offset+1 , by = "1 month")
+      start <- start[length(start)]
+
     }else if (rounded == TRUE){
       start <- round.POSIXt(ts[1, 1], units = "hours")
       Interval <- Interval*60
@@ -190,6 +198,7 @@ changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
       # this is just calculating forward mean
       newts$Inst <- c(diff(newts$accum)/Interval,NA )
       newts <- newts %>% dplyr::select(c(Date, Inst))
+      newts$Date <- newts$Date + offset*60
     }
   }else if(option == "fmean")
   {
@@ -212,7 +221,7 @@ changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
   {
     newts$accum <- newts$accum - newts$accum[1]
   }
-  newts$Date <- newts$Date + offset*60
+
 
   return(newts)
 
