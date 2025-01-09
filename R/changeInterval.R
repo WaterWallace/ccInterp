@@ -60,11 +60,11 @@
 #' lines(hourlyInst, col = "orange")
 #' @export
 #'
-ChangeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
+changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
                            end = 0, offset = 0, option = "fmean",
                            rounded = TRUE)
 {
-  instAsSpline <- FALSE
+  instAsSpline <- FALSE  # Unsure if this is valid, so leave as false, forward means with an offset are acceptable.
 
   stopifnot("duplicate timestamps" = length(ts[,1]) == length(unique(ts[,1])) )
 
@@ -90,11 +90,14 @@ ChangeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
     }else if (Interval == "Annual"){
       #start <- lubridate::ceiling_date(ts[1,1], unit = "year")
       start <- lubridate::floor_date(ts[1,1], unit = "month")
-      offset <- offset - lubridate::month(start)
+      if(offset != 0) offset <- offset - lubridate::month(start)
       if (offset < 0) offset <- offset + 12
-      start <- start
+
       start <- seq(as.Date(start)+1, length.out = offset+1 , by = "1 month")
       start <- start[length(start)]
+
+      start <- start %>% as.POSIXct( )
+      start <- lubridate::force_tz(start, tzone = "Australia/Queensland")
 
     }else if (rounded == TRUE){
       start <- round.POSIXt(ts[1, 1], units = "hours")
@@ -122,15 +125,18 @@ ChangeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
     end <- as.POSIXct(end, origin = "1970-01-01")
   }
 
-
   # set to numeric
   ts <- ts %>% mutate( numDate = as.numeric(Date))
   if(Interval == "Monthly")
   {
     newintTS <- seq(as.Date(start)+1, as.Date(end), by = "1 month")
+    newintTS <- newintTS %>% as.POSIXct( )
+    newintTS <- lubridate::force_tz(newintTS, tzone = "Australia/Queensland")
   }else if (Interval == "Annual")
   {
     newintTS <- seq(as.Date(start)+1, as.Date(end), by = "1 year")
+    newintTS <- newintTS %>% as.POSIXct( )
+    newintTS <- lubridate::force_tz(newintTS, tzone = "Australia/Queensland")
   }else
   {
     # new time sequence
@@ -142,6 +148,8 @@ ChangeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
   }
 
   if(dt == 1){
+    # dt 1  = instantaenous inputs
+
     # merge new timestamps into original dataset with linear interpolation
     f.timeties <- approxfun(ts$Date, ts$value)
     linearts <- data.frame(Date = newintTS, value = f.timeties(newintTS))
@@ -182,9 +190,12 @@ ChangeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
 
   }
 
-
   # add half a timestep for instantaneous
   if(option == "inst"){
+    # newintts
+    stopifnot("Must be equal intervals for inst datatype, use fmean or total" = newintTS %>% diff %>% as.numeric() %>% mean ==
+                newintTS %>% diff %>% as.numeric() %>% median)
+
     if(instAsSpline)
     {
       newintTS <- seq(start+offset*60, end , by = Interval)
@@ -202,11 +213,25 @@ ChangeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
     }
   }else if(option == "fmean")
   {
-    newts$FMean <- c(diff(newts$accum)/Interval,NA )
+    deltaT <- difftime((newts$Date), lag(newts$Date), units= "sec") %>% as.numeric()
+    newts$FMean <- c(diff(newts$accum)/deltaT[-1] ,NA )
+
+    #newts$FMean <- c(diff(newts$accum)/Interval,NA ) # skw: test this works as it should
     newts <- newts %>% dplyr::select(c(Date, FMean))
+
+  }else if(option == "total")
+  {
+    #deltaT <- difftime((newts$Date), lag(newts$Date), units= "sec") %>% as.numeric()
+    newts$Total <- c(diff(newts$accum),NA )
+    #newts$FMean <- c(diff(newts$accum)/Interval,NA ) # skw: test this works as it should
+    newts <- newts %>% dplyr::select(c(Date, Total))
+
   }else if(option == "tmean")
   {
-    newts$TMean <- c(NA,diff(newts$accum)/Interval )
+    #this needs checking
+    deltaT <- difftime((newts$Date), lag(newts$Date), units= "sec") %>% as.numeric()
+    newts$TMean <- c(NA, diff(newts$accum)/deltaT[-1] )
+    #newts$TMean <- c(NA,diff(newts$accum)/Interval )
     newts <- newts %>% dplyr::select(c(Date, TMean))
   }
   newts$Date <- as.POSIXct(newts$Date)
