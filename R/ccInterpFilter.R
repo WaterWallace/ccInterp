@@ -54,14 +54,6 @@
 #' lines(spinterpConfi$spinterpData.Date, spinterpConfi$lower)
 #'
 #' @export
-#'
-#'
-#'
-#'
-#'
-#'
-#'
-#'
 ccInterpFilter <- function(ts, hours = 24, discardbelowzero = FALSE,
                            centred = FALSE, type = "spinterp") {
   # Trim times up, won't use part hours

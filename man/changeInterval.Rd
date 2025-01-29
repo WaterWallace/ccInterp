@@ -27,7 +27,8 @@ i.e. "2016-12-17 05:00" or numeric, seconds since "1970-01-01" i.e. 1481914800}
 
 \item{end}{same as start}
 
-\item{offset}{minutes to offset the averaging window, not the result}
+\item{offset}{minutes to offset the averaging window, not the result
+for Interval "Annual", offset is the start month, i.e. 10 for October}
 
 \item{option}{"fmean", "inst", "sum", "resample"
 fmean Calcaulte a forward mean, i.e. the daily mean for this day
