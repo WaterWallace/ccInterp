@@ -213,7 +213,7 @@ changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
     }
   }else if(option == "fmean")
   {
-    deltaT <- difftime((newts$Date), lag(newts$Date), units= "sec") %>% as.numeric()
+    deltaT <- difftime((newts$Date), dplyr::lag(newts$Date), units= "sec") %>% as.numeric()
     newts$FMean <- c(diff(newts$accum)/deltaT[-1] ,NA )
 
     #newts$FMean <- c(diff(newts$accum)/Interval,NA ) # skw: test this works as it should
@@ -221,7 +221,7 @@ changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
 
   }else if(option == "total")
   {
-    #deltaT <- difftime((newts$Date), lag(newts$Date), units= "sec") %>% as.numeric()
+    #deltaT <- difftime((newts$Date), dplyr::lag(newts$Date), units= "sec") %>% as.numeric()
     newts$Total <- c(diff(newts$accum),NA )
     #newts$FMean <- c(diff(newts$accum)/Interval,NA ) # skw: test this works as it should
     newts <- newts %>% dplyr::select(c(Date, Total))
@@ -229,7 +229,7 @@ changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
   }else if(option == "tmean")
   {
     #this needs checking
-    deltaT <- difftime((newts$Date), lag(newts$Date), units= "sec") %>% as.numeric()
+    deltaT <- difftime((newts$Date), dplyr::lag(newts$Date), units= "sec") %>% as.numeric()
     newts$TMean <- c(NA, diff(newts$accum)/deltaT[-1] )
     #newts$TMean <- c(NA,diff(newts$accum)/Interval )
     newts <- newts %>% dplyr::select(c(Date, TMean))
