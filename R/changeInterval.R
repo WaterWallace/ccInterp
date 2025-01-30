@@ -4,10 +4,14 @@
 #'
 #' For downsampling intervals, for example hourly to daily.
 #'
-#' @param ts dataframe of posixct time (time in seconds) and an instantaneous value (per second i.e. cumecs), and optionally a quality code
+#' @param ts dataframe of posixct time (time in seconds) and an instantaneous
+#' value (per second i.e. cumecs), and optionally a quality code
 #' @param dt datatype of the input data, 1 = inst; 2 = fmean
 #' default is 1 for instantaenous, the inputs can be randomly spaced in time.
-#' 2 for fmean when you are converting evenly spaced forward means such as daily averages.
+#' 2 for fmean when you are converting evenly spaced forward means such as daily
+#'  averages.
+#' @param Interval string or number, "Hourly", "Daily", "Monthly", "Annual", or
+#' a number of minutes.
 #' @param start a timestamp written, that can be converted to posixct.
 #' i.e. "2016-12-17 05:00" or numeric, seconds since "1970-01-01" i.e. 1481914800
 #' @param end same as start
@@ -23,7 +27,8 @@
 #' leave as true, unpredictable result with false, particularly over long gaps
 #' @param rounded round the time to the hour
 #'
-#' @return  dataframe with tiemstamp as posixct a trapezoidal integrated rate and quality code if included.
+#' @return  dataframe with tiemstamp as posixct a trapezoidal integrated rate
+#' and quality code if included.
 #'
 #' @examples
 #'
@@ -41,7 +46,8 @@
 #' lines(daily)
 #'
 #'
-#' # the same interval, but without automatically adjusting the offset to output by using "Daily" as interval
+#' #the same interval, but without automatically adjusting the offset to
+#' #output by using "Daily" as interval
 #' twentyfourhour <- changeInterval(D, Interval = 24 * 60)
 #' head(twentyfourhour)
 #'
@@ -54,7 +60,8 @@
 #'
 #' # output an hourly instanaenous (timestamp in middle of averaging period ),
 #' # offset average window by 30 minutes to output datapoints on the hour.
-#' # essentially it is the average of the period 30 mins before and 30 mins after the timestamp.
+#' # essentially it is the average of the period 30 mins before and 30 mins
+#' # after the timestamp.
 #' hourlyInst <- changeInterval(D, Interval = "Hourly", offset = 0, option = "inst")
 #' head(hourlyInst)
 #' lines(hourlyInst, col = "orange")
@@ -74,6 +81,8 @@ changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
   ts$Date <- as.POSIXct(ts$Date)
   inputts <- ts
 
+
+
   if (start == 0)
   {
     if (Interval == "Daily")
@@ -82,8 +91,10 @@ changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
       Interval <- 60*60*24
     }else if ( Interval == "Hourly")
     {
-      start <- round.POSIXt(ts[1, 1], units = "hours")
-      Interval = 60*60
+      if(option == "inst") {offset <- 30}
+      start <- lubridate::ceiling_date(ts[1,1]-offset*60, unit = "hours")
+      #start <- round.POSIXt(ts[1, 1], units = "hours")
+      Interval <- 60*60
     }else if ( Interval == "Monthly")
     {
       start <- lubridate::ceiling_date(ts[1,1], unit = "month")
@@ -100,7 +111,8 @@ changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
       start <- lubridate::force_tz(start, tzone = "Australia/Queensland")
 
     }else if (rounded == TRUE){
-      start <- round.POSIXt(ts[1, 1], units = "hours")
+      #start <- round.POSIXt(ts[1, 1], units = "hours")
+      start <- lubridate::ceiling_date(ts[1,1]-offset*60, unit = "hours")
       Interval <- Interval*60
     }else{
       start <- ts[1, 1]
@@ -139,11 +151,12 @@ changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
     newintTS <- lubridate::force_tz(newintTS, tzone = "Australia/Queensland")
   }else
   {
-    # new time sequence
     if(option == "inst" & !instAsSpline)
-    {
+    { # override offset if outputting "inst" data
       offset <- ( Interval / 60 ) / 2
     }
+
+    # new time sequence
     newintTS <- seq(start+offset*60, end , by = Interval)
   }
 
@@ -153,6 +166,8 @@ changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
     # merge new timestamps into original dataset with linear interpolation
     f.timeties <- approxfun(ts$Date, ts$value)
     linearts <- data.frame(Date = newintTS, value = f.timeties(newintTS))
+    #linearts <- data.frame(Date = newintTS, value = f.timeties(newintTS))
+
     merged <- rbind(linearts, dplyr::select(ts, c(Date, value)))
     merged <- merged[order(merged$Date), ]
     ts <- na.omit(distinct(merged))

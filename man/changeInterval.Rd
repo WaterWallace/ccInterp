@@ -16,11 +16,16 @@ changeInterval(
 )
 }
 \arguments{
-\item{ts}{dataframe of posixct time (time in seconds) and an instantaneous value (per second i.e. cumecs), and optionally a quality code}
+\item{ts}{dataframe of posixct time (time in seconds) and an instantaneous
+value (per second i.e. cumecs), and optionally a quality code}
 
 \item{dt}{datatype of the input data, 1 = inst; 2 = fmean
 default is 1 for instantaenous, the inputs can be randomly spaced in time.
-2 for fmean when you are converting evenly spaced forward means such as daily averages.}
+2 for fmean when you are converting evenly spaced forward means such as daily
+ averages.}
+
+\item{Interval}{string or number, "Hourly", "Daily", "Monthly", "Annual", or
+a number of minutes.}
 
 \item{start}{a timestamp written, that can be converted to posixct.
 i.e. "2016-12-17 05:00" or numeric, seconds since "1970-01-01" i.e. 1481914800}
@@ -42,7 +47,8 @@ resample interpolate at intervals, no transformation}
 leave as true, unpredictable result with false, particularly over long gaps}
 }
 \value{
-dataframe with tiemstamp as posixct a trapezoidal integrated rate and quality code if included.
+dataframe with tiemstamp as posixct a trapezoidal integrated rate
+and quality code if included.
 }
 \description{
 Trapezoidal integration of a time series
@@ -66,7 +72,8 @@ head(daily)
 lines(daily)
 
 
-# the same interval, but without automatically adjusting the offset to output by using "Daily" as interval
+#the same interval, but without automatically adjusting the offset to
+#output by using "Daily" as interval
 twentyfourhour <- changeInterval(D, Interval = 24 * 60)
 head(twentyfourhour)
 
@@ -79,7 +86,8 @@ lines(ts, f.hourly(ts), col = "red")
 
 # output an hourly instanaenous (timestamp in middle of averaging period ),
 # offset average window by 30 minutes to output datapoints on the hour.
-# essentially it is the average of the period 30 mins before and 30 mins after the timestamp.
+# essentially it is the average of the period 30 mins before and 30 mins
+# after the timestamp.
 hourlyInst <- changeInterval(D, Interval = "Hourly", offset = 0, option = "inst")
 head(hourlyInst)
 lines(hourlyInst, col = "orange")

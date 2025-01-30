@@ -61,7 +61,7 @@ cciDespike <- function(spiky, hoursAvg = 3, stdevs = 3, doPlot = FALSE)
   spinterpDespiked <- spinterpDespiked %>% select(-c(Filter, dydx))
   removedPoints <- removedPoints %>% select(-c(Filter, dydx))
 
-  f.spinterpDespiked <- approxfun(spinterpDespiked)
+  #f.spinterpDespiked <- spinterpDespiked %>% na.omit %>% approxfun()
   removedPoints$resid <- pmax(
     removedPoints[,2] - f.upper(removedPoints[,1]),
     f.lower(removedPoints[,1]) - removedPoints[,2]

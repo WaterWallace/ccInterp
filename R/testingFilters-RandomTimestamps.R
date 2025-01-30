@@ -41,8 +41,11 @@ if(FALSE)
 #  =======
     # synthetic
 #    >>>>>>> parent of a420613 (evaluating paper updates)
-  randomts <- StevesCoolRandomTS(maxFlow = 1000, obs = 10000, maxNoise = 200)
+  randomts <- StevesCoolRandomTS(maxFlow = 1000, obs = 10000, maxNoise = 200, smoothed = FALSE)
   #plot(randomts$Time, randomts$Signal)
+  randomts$TidedSignal <- randomts$Signal + randomts$Noise
+  randomtsHrly <- randomts %>% dplyr::select(Time, TidedSignal) %>% changeInterval(Interval = "Hourly", option = "inst")
+
 
   par(mfrow=c(1,2))
   plot(randomts$Time, randomts$Noise)
@@ -55,8 +58,8 @@ if(FALSE)
        xlab = "Time (hours)", ylab = "Amplitude")
 
 
-  randomts$TidedSignal <- randomts$Signal + randomts$Noise
-  randomts
+  #randomts$TidedSignal <- randomts$Signal + randomts$Noise
+  #randomts
 
   plot(randomts$Time, randomts$TidedSignal)
 
@@ -65,19 +68,20 @@ if(FALSE)
 
   # Define a simple moving average filter
   filter_length <- 25  # Length of the moving average
-  filtered_signal <- stats::filter(randomts$TidedSignal, rep(1 / filter_length, filter_length), sides = 2)
-  randomts$ma25Filter <- filtered_signal
+  filtered_signal <- stats::filter(randomtsHrly$Inst, rep(1 / filter_length, filter_length), sides = 2)
+  randomtsHrly$ma25Filter <- filtered_signal
 
-  bwf <- butterworthFilter(data.frame(randomts$Time,  randomts$TidedSignal))
-  randomts$bwf <- bwf$Filtered
+  bwf <- butterworthFilter(data.frame(randomtsHrly$Date,  randomtsHrly$Inst))
+  randomtsHrly$bwf <- bwf$Filtered
 
-
+  # don't need to change to hourly for this, but the output is hourly
   cci <- ccInterpFilter(data.frame(randomts$Time,  randomts$TidedSignal))
 
   lines(cci$Date, cci$avg, col = "blue")
   #plot(cci$Date, cci$avg)
 
-  randomts$cci <- approx(cci$Date, cci$avg, randomts$Time)$y
+  randomtsHrly$cci <- approx(cci$Date, cci$avg, randomtsHrly$Date)$y
+
   #View(randomts)
 
   # Plot the input signal
@@ -87,20 +91,19 @@ if(FALSE)
 
   # Plot the filtered signal
   #lines(randomts$Time, randomts$ma25Filter, col = "red", lwd = 2)
-  lines(randomts$Time, randomts$bwf, col = "orange", lwd = 2)
-  lines(cci$Date, cci$avg, col = "blue")
+  lines(randomtsHrly$Date, randomtsHrly$bwf, col = "orange", lwd = 2)
+  lines(randomtsHrly$Date, randomtsHrly$cci, col = "blue")
 
+  godin <- godinFilter(randomtsHrly$Inst)
+  randomtsHrly$Godin <- godin
 
-  godin <- godinFilter(randomts$TidedSignal)
-  randomts$Godin <- godin
-
-
-  randomts <- na.omit(randomts)
+  randomtsHrly <- na.omit(randomtsHrly)
 
 
   # Spectrum of input signal
-  input_spectrum <- spectrum(randomts$TidedSignal , plot = FALSE)
-  filtered_spectrum <- spectrum(randomts$bwf, plot = FALSE)
+  input_spectrum <- spectrum(randomtsHrly$Inst , plot = FALSE)
+  # Specturm of butterworth
+  filtered_spectrum <- spectrum(randomtsHrly$bwf, plot = FALSE)
 
   # Extract frequencies and amplitudes
   input_freq <- input_spectrum$freq / dt       # Adjust frequencies for sampling rate
@@ -132,17 +135,17 @@ if(FALSE)
   input_amp <- sqrt(input_spectrum$spec)       # Convert power to amplitude
   input_period <- 1/input_freq
 
-  filtered_spectrum_cci <- spectrum(randomts$cci, plot = FALSE)
+  filtered_spectrum_cci <- spectrum(randomtsHrly$cci, plot = FALSE)
   filtered_freq_cci <- filtered_spectrum_cci$freq / dt
   filtered_amp_cci <- sqrt(filtered_spectrum_cci$spec)
   filtered_period_cci <- 1/filtered_freq_cci
 
-  filtered_spectrum_bwf <- spectrum(randomts$bwf, plot = FALSE)
+  filtered_spectrum_bwf <- spectrum(randomtsHrly$bwf, plot = FALSE)
   filtered_freq_bwf <- filtered_spectrum_bwf$freq / dt
   filtered_amp_bwf <- sqrt(filtered_spectrum_bwf$spec)
   filtered_period_bwf <- 1/filtered_freq_bwf
 
-  filtered_spectrum_gdn <- spectrum(randomts$Godin, plot = FALSE)
+  filtered_spectrum_gdn <- spectrum(randomtsHrly$Godin, plot = FALSE)
   filtered_freq_gdn <- filtered_spectrum_gdn$freq / dt
   filtered_amp_gdn <- sqrt(filtered_spectrum_gdn$spec)
   filtered_period_gdn <- 1/filtered_freq_gdn
@@ -192,10 +195,10 @@ if(FALSE)
 
   ####################################
 
-
-  plot(randomts$Signal, randomts$bwf, col = "orange")
-  points(randomts$Signal, randomts$Godin, col = "red")
-  points(randomts$Signal, randomts$cci, col = "blue")
+  randomtsHrly$Signal <- approx(randomts$Time, randomts$Signal, randomtsHrly$Date)$y
+  plot(randomtsHrly$Signal, randomtsHrly$bwf, col = "orange")
+  points(randomtsHrly$Signal, randomtsHrly$Godin, col = "red")
+  points(randomtsHrly$Signal, randomtsHrly$cci, col = "blue")
   abline(0, 1)
 
 
@@ -366,13 +369,13 @@ if(FALSE)
   ) %>% dygraph
 
 
-
+  par(mfrow = c(2,2))
   # Plot the response function
   plot(input_period_synthetic, response_bwf_synthetic, type = "l", col = "orange", lwd = 2,
        main = "Butterworth", xlab = "Period (hours)",
        ylab = "Response (Amplitude Ratio)",
        xlim = c(0,48), log = "y")
-
+  abline(h = 1, col = "gray", lty = 2)  # Ideal response line
 
 
   # Plot the response function
@@ -386,6 +389,7 @@ if(FALSE)
        main = "CCI", xlab = "Period (hours)",
        ylab = "Response (Amplitude Ratio)",
        xlim = c(0,48), log = "y")
+  abline(h = 1, col = "gray", lty = 2)  # Ideal response line
 
   # Plot the response function
   points(input_period_real, response_cci_real, type = "l", col = "blue", lwd = 2,
