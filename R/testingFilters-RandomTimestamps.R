@@ -1,13 +1,13 @@
 if(FALSE)
 {
   library(ccInterp)
-
+  library(dplyr)
   ################################
 #  <<<<<<< HEAD
   # start/end of data
   #
-  randomts <- StevesCoolRandomTS(maxFlow = 1000, obs = 400, maxNoise = 200, smoothed = FALSE)
-
+  randomts <- StevesCoolRandomTS(maxFlow = 400, obs = 400, maxNoise = 400, smoothed = TRUE, randomtimes = TRUE)
+  #seq(randomts$Time[1], randomts$Time[1])
 
   randomts <- randomts %>% mutate(TidedSignal = Signal + Noise)
   plot(randomts$Time, randomts$TidedSignal)
@@ -20,7 +20,7 @@ if(FALSE)
   #head(randomtsHrly)
   #head(bwf)
 
-  cci <- ccInterpFilter(data.frame(randomts$Time,  randomts$TidedSignal), type = "spinterp")
+  cci <- ccInterpFilter(data.frame(randomts$Time,  randomts$TidedSignal), type = "spline")
 
   randomtsHrly$cci <- approx(cci$Date, cci$avg, randomtsHrly$Date)$y
   randomtsHrly$godin <- godinFilter(randomtsHrly$Inst)
@@ -41,7 +41,7 @@ if(FALSE)
 #  =======
     # synthetic
 #    >>>>>>> parent of a420613 (evaluating paper updates)
-  randomts <- StevesCoolRandomTS(maxFlow = 1000, obs = 10000, maxNoise = 200, smoothed = FALSE)
+  randomts <- StevesCoolRandomTS(maxFlow = 400, obs = 10000, maxNoise = 200, smoothed = FALSE, randomtimes = TRUE)
   #plot(randomts$Time, randomts$Signal)
   randomts$TidedSignal <- randomts$Signal + randomts$Noise
   randomtsHrly <- randomts %>% dplyr::select(Time, TidedSignal) %>% changeInterval(Interval = "Hourly", option = "inst")
@@ -75,7 +75,7 @@ if(FALSE)
   randomtsHrly$bwf <- bwf$Filtered
 
   # don't need to change to hourly for this, but the output is hourly
-  cci <- ccInterpFilter(data.frame(randomts$Time,  randomts$TidedSignal))
+  cci <- ccInterpFilter(data.frame(randomts$Time,  randomts$TidedSignal), type = "spline")
 
   lines(cci$Date, cci$avg, col = "blue")
   #plot(cci$Date, cci$avg)
@@ -104,6 +104,8 @@ if(FALSE)
   input_spectrum <- spectrum(randomtsHrly$Inst , plot = FALSE)
   # Specturm of butterworth
   filtered_spectrum <- spectrum(randomtsHrly$bwf, plot = FALSE)
+
+  dt <- as.numeric(median(diff(randomtsHrly$Date)))
 
   # Extract frequencies and amplitudes
   input_freq <- input_spectrum$freq / dt       # Adjust frequencies for sampling rate
@@ -233,7 +235,7 @@ if(FALSE)
   randomts$bwf <- bwf$Filtered
 
 
-  cci <- ccInterpFilter(data.frame(mrdQ$time,  mrdQ$value_Discharge))
+  cci <- ccInterpFilter(data.frame(mrdQ$time,  mrdQ$value_Discharge), type = "spline")
   head(cci)
 
   #lines(cci$Date, cci$avg, col = "blue")

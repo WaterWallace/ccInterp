@@ -112,7 +112,7 @@ changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
 
     }else if (rounded == TRUE){
       #start <- round.POSIXt(ts[1, 1], units = "hours")
-      start <- lubridate::ceiling_date(ts[1,1]-offset*60, unit = "hours")
+      start <- lubridate::ceiling_date(ts[1,1], unit = "hours")
       Interval <- Interval*60
     }else{
       start <- ts[1, 1]

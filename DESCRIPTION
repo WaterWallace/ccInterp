@@ -1,7 +1,7 @@
 Package: ccInterp
 Type: Package
 Title: Combined Cumulative Interpolation Filter
-Version: 0.5.3
+Version: 0.5.4
 Author: Stephen Wallace
 Maintainer: Stephen Wallace <stephen.wallace@des.qld.gov.au>
 Description: Filters a source timeseries to remove noise/tides/etc
