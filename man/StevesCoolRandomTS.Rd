@@ -8,7 +8,8 @@ StevesCoolRandomTS(
   maxFlow = 500 * runif(1),
   maxNoise = 500 * runif(1),
   obs = 10000,
-  smoothed = TRUE
+  smoothed = TRUE,
+  randomtimes = FALSE
 )
 }
 \arguments{

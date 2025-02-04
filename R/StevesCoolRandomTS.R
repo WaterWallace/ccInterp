@@ -26,8 +26,9 @@
 #'
 #' @export
 
-StevesCoolRandomTS <- function(maxFlow=500*runif(1), maxNoise=500*runif(1), obs=10000, smoothed=TRUE)
+StevesCoolRandomTS <- function(maxFlow=500*runif(1), maxNoise=500*runif(1), obs=10000, smoothed=TRUE, randomtimes = FALSE)
 {
+
   end <- Sys.Date() - obs/24
   start <- runif(1, min=end-2*365, max=end)
 
@@ -50,8 +51,14 @@ StevesCoolRandomTS <- function(maxFlow=500*runif(1), maxNoise=500*runif(1), obs=
   {
     hourly <- changeInterval(data.frame(df$Time, df$Signal), Interval = "Hourly", option="inst")
     godin <- godinFilter(hourly$Inst)
-    df <- data.frame(Time = hourly$Date, Signal = godin)
+
+    if(!randomtimes){
+      df <- data.frame(Time = hourly$Date, Signal = godin)
+    }else{
+      df <- data.frame(Time = df$Time, Signal = approx(hourly$Date, hourly$Inst, df$Time)$y)
+    }
     df <- na.omit(df)
+
   }
 
   t <- as.numeric( df[,1] ) /60/60/24

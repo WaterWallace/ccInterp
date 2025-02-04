@@ -74,7 +74,7 @@ spinterpConvert <- function(start, rate, outputInt = (1 / 24), type = "spinterp"
   dur <- c(diff(t), 0) # t[2]-t[1]  #c(0,diff(t))
 
   # create a time sequence for output data
-  xp <- seq(t[1], t[nt], by = outputInt)
+  xp <- seq(t[1], t[nt+1], by = outputInt)
 
   negativeOffset <- min(rate)
   rate <- rate - negativeOffset
