@@ -15,7 +15,6 @@
 #' @param start a timestamp written, that can be converted to posixct.
 #' i.e. "2016-12-17 05:00" or numeric, seconds since "1970-01-01" i.e. 1481914800
 #' @param end same as start
-#'
 #' @param offset minutes to offset the averaging window, not the result
 #'     for Interval "Annual", offset is the start month, i.e. 10 for October
 #' @param option "fmean", "inst", "sum", "resample"
