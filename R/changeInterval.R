@@ -69,7 +69,7 @@
 #'
 changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
                            end = 0, offset = 0, option = "fmean",
-                           rounded = TRUE)
+                           rounded = TRUE, decimals = 3)
 {
   instAsSpline <- FALSE  # Unsure if this is valid, so leave as false, forward means with an offset are acceptable.
 
@@ -254,7 +254,7 @@ changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
   if (length(inputts) == 3) {
     newts <- maxminfun(inputts[, 1], inputts[, 3], newts, option = "max")
   }
-  newts[,2] <- round(newts[,2], 4)
+  newts[,2] <- round(newts[,2], decimals)
   newts <- na.omit(newts)
 
   if(option == "sum")
