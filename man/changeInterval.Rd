@@ -12,7 +12,8 @@ changeInterval(
   end = 0,
   offset = 0,
   option = "fmean",
-  rounded = TRUE
+  rounded = TRUE,
+  decimals = 3
 )
 }
 \arguments{
