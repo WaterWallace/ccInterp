@@ -1,11 +1,17 @@
 Package: ccInterp
 Type: Package
-Title: Combined Cumulative Interpolation Filter
+Title: (C)as(c)ading (I)ntegral I(nterp)olation package for R (cci)
 Version: 0.5.6
 Author: Stephen Wallace
 Maintainer: Stephen Wallace <stephen.wallace@des.qld.gov.au>
 Description: Filters a source timeseries to remove noise/tides/etc
     Output data as Hourly.
+    Functions for calculating daily/hourly totals etc.
+    Daily totals are integrated and then interpolated with a monotone interpolant
+    Interpolated hourly values are calculated for cascading daily means
+    calculated for each hour.
+    The mean of all cascading hourly interpolated daily values is the filtered
+    result.
 License: GPL-2
 Encoding: UTF-8
 LazyData: true
