@@ -25,7 +25,6 @@
 #'  lines(rough$Time, rough$Signal+rough$Noise, col='red')
 #'
 #' @export
-
 StevesCoolRandomTS <- function(maxFlow=500*runif(1), maxNoise=1000*runif(1), obs=10000, smoothed=TRUE, randomtimes = FALSE, tideInteractions = TRUE)
 {
 
@@ -88,32 +87,36 @@ StevesCoolRandomTS <- function(maxFlow=500*runif(1), maxNoise=1000*runif(1), obs
   trend <- approx(df$Time, df$Noise, hourseq)$y %>% godinFilter
   df <- df %>% mutate(Noise = Noise - approx(hourseq, trend, Time, rule = 2)$y)
 
+  noiseratio <- max(df$Noise) / maxNoise
+
   if(tideInteractions)
   {
 
     # dampen tide during events
     df <- df %>% mutate(signalratio = Signal / ( max(df$Signal) - min(df$Signal) ) ) %>%
       mutate(signalratio = signalratio - min(signalratio))
-    #df <- df %>% mutate(TideInteraction = Noise - ( Noise * (1-signalratio)))
 
-    noisediff <- df$Noise - (  df$Noise * (1-df$signalratio) )
-    df <- df %>% mutate(Noise =  Noise * (1-signalratio))
+    df <- df %>% mutate(TideInteraction = ( Noise * ( 1 - signalratio ) ) - Noise ) # new noise minus noise
 
     # add lag
     maxlag = 120 # 120 minutes
     laggedts <- df %>% mutate(lagminutes = signalratio ^ 0.5  * maxlag) %>%
       mutate(Time = Time + lagminutes * 60)
 
-    df$Noise <- approx(laggedts$Time, laggedts$Noise, df$Time, rule = 2)$y
-    #df$TideInteraction <- df$TideInteraction + laggdiff
+    # lagged noise minus existing noise
+    laggednoise <- approx(laggedts$Time, (laggedts$Noise+laggedts$TideInteraction), df$Time, rule = 2)$y
+    laggdiff <- laggednoise - (df$Noise+df$TideInteraction)
+
+    df$TideInteraction <- (df$TideInteraction + laggdiff) %>% round(3)
 
     df <- df %>% dplyr::select(-signalratio)
-    #df <- df %>% mutate(TideInteraction = round( TideInteraction, 3 ))
+    df$TideInteraction <- df$TideInteraction / noiseratio
 
   }
 
   # round and normalise to desired values
-  df <- df %>% mutate(Noise = round( Noise / (max(Noise)/maxNoise), 3 ))
+  df <- df %>% mutate(Noise = round( Noise / noiseratio, 3 ))
+
 
   return(df)
 
