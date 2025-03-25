@@ -6,20 +6,17 @@ if(FALSE)
 #  <<<<<<< HEAD
   # start/end of data
   #
+  set.seed(1103)
   randomts <- StevesCoolRandomTS(maxFlow = 400, obs = 400, maxNoise = 400, smoothed = TRUE, randomtimes = TRUE)
-  #seq(randomts$Time[1], randomts$Time[1])
+
+  set.seed(1103)
+  randomts <- StevesCoolRandomTS(maxFlow = 400, obs = 400, maxNoise = 400, smoothed = TRUE, randomtimes = TRUE, tideInteractions = FALSE)
 
   randomts <- randomts %>% mutate(TidedSignal = Signal + Noise)
-  plot(randomts$Time, randomts$TidedSignal)
-
   randomtsHrly <- randomts %>% dplyr::select(Time, TidedSignal) %>% changeInterval(Interval = "Hourly", option = "inst")
-  points(randomtsHrly, col = "red")
 
   bwf <- butterworthFilter(randomtsHrly)
   randomtsHrly$bwf <- bwf$Filtered
-  #head(randomtsHrly)
-  #head(bwf)
-
   cci <- ccInterpFilter(data.frame(randomts$Time,  randomts$TidedSignal), type = "spline")
 
   randomtsHrly$cci <- approx(cci$Date, cci$avg, randomtsHrly$Date)$y
@@ -31,8 +28,51 @@ if(FALSE)
   points(godin ~ Date, data = randomtsHrly, col = "darkgreen", cex = 1)
   lines(Signal ~ Time, data = randomts, col = "grey15", cex = 1)
 
-  legend("topleft", legend = c("Unfiltered", "Input Signal", "cci","bwf","godin"),
-         col = c("grey", "black", "blue", "orange", "darkgreen"), lty = c(1,1,NA,NA,NA), pch = c(NA, NA, 4,3,1))
+  #########################
+  # No Tide Interactions
+
+  set.seed(1103)
+  randomts <- StevesCoolRandomTS(maxFlow = 400, obs = 400, maxNoise = 400, smoothed = TRUE, randomtimes = TRUE, tideInteractions = FALSE)
+
+  randomts <- randomts %>% mutate(TidedSignal = Signal + Noise)
+  randomtsHrly <- randomts %>% dplyr::select(Time, TidedSignal) %>% changeInterval(Interval = "Hourly", option = "inst")
+
+  bwf <- butterworthFilter(randomtsHrly)
+  randomtsHrly$bwf <- bwf$Filtered
+  cci <- ccInterpFilter(data.frame(randomts$Time,  randomts$TidedSignal), type = "spline")
+
+  randomtsHrly$cci <- approx(cci$Date, cci$avg, randomtsHrly$Date)$y
+  randomtsHrly$godin <- godinFilter(randomtsHrly$Inst)
+
+  plot(TidedSignal ~ Time, data = randomts, type = "l", ylab = "Discharge", col = "grey")
+  points(cci ~ Date, data = randomtsHrly, col = "blue", pch = 4, cex = 1)
+  points(bwf ~ Date, data = randomtsHrly, col = "orange", pch = 3, cex = 1)
+  points(godin ~ Date, data = randomtsHrly, col = "darkgreen", cex = 1)
+  lines(Signal ~ Time, data = randomts, col = "grey15", cex = 1)
+
+  #########################
+  # With Tide Interactions
+  set.seed(1103)
+  randomts <- StevesCoolRandomTS(maxFlow = 400, obs = 400, maxNoise = 400, smoothed = TRUE, randomtimes = TRUE, tideInteractions = TRUE)
+
+  randomts <- randomts %>% mutate(TidedSignal = Signal + Noise)
+  randomtsHrly <- randomts %>% dplyr::select(Time, TidedSignal) %>% changeInterval(Interval = "Hourly", option = "inst")
+
+  bwf <- butterworthFilter(randomtsHrly)
+  randomtsHrly$bwf <- bwf$Filtered
+  cci <- ccInterpFilter(data.frame(randomts$Time,  randomts$TidedSignal), type = "spline")
+
+  randomtsHrly$cci <- approx(cci$Date, cci$avg, randomtsHrly$Date)$y
+  randomtsHrly$godin <- godinFilter(randomtsHrly$Inst)
+
+  plot(TidedSignal ~ Time, data = randomts, type = "l", ylab = "Discharge", col = "grey")
+  points(cci ~ Date, data = randomtsHrly, col = "blue", pch = 4, cex = 1)
+  points(bwf ~ Date, data = randomtsHrly, col = "orange", pch = 3, cex = 1)
+  points(godin ~ Date, data = randomtsHrly, col = "darkgreen", cex = 1)
+  lines(Signal ~ Time, data = randomts, col = "grey15", cex = 1)
+
+ # legend("topleft", legend = c("Unfiltered", "Input Signal", "cci","bwf","godin"),
+#         col = c("grey", "black", "blue", "orange", "darkgreen"), lty = c(1,1,NA,NA,NA), pch = c(NA, NA, 4,3,1))
 
 
   #####################################

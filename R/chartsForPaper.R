@@ -5,6 +5,8 @@ if(FALSE)
   library(dygraphs)
   library(xts)
   library(dplyr)
+  library(pracma)
+  library(ggplot2)
   ################################
   # start/end of data
   #
@@ -51,20 +53,418 @@ if(FALSE)
 
   print(randomSeed)
 
+  # Multiple random trials
+  reps <- 1000
+  bwfpvalues <- rep(0, reps)
+  ccipvalues <- rep(0, reps)
+  for(i in seq(1:reps))
+  {
+
+    # 1428 is good, 2 main picks and a dip
+    # 62304 becomes worse at peak
+    # 20852 is a great example, even though the cci variance is changed
+    #########
+    # randomSeed <- 42412 # majorly missed peak, accentuated rining at beginning of event
+    #########         strong trend in balnd-altman
+    randomSeed <- sample(1:1000, 1)
+    randomSeed <- as.integer((as.numeric(Sys.time()) * 1000) %% 100) * randomSeed
+
+    set.seed(randomSeed)
+    print(randomSeed)
+
+    randomts <- StevesCoolRandomTS(obs = 500, smoothed = TRUE, randomtimes = TRUE, tideInteractions = FALSE)
+
+    randomts <- randomts %>% mutate(TidedSignal = Signal + Noise)
+    randomtsHrly <- randomts %>% dplyr::select(Time, TidedSignal) %>% changeInterval(Interval = "Hourly", option = "inst")
+
+    bwf <- butterworthFilter(randomtsHrly)
+    randomtsHrly$bwf <- bwf$Filtered
+    cci <- ccInterpFilter(data.frame(randomts$Time,  randomts$TidedSignal), type = "spinterp")
+
+    randomtsHrly$cci <- approx(cci$Date, cci$avg, randomtsHrly$Date)$y
+    randomtsHrly$godin <- godinFilter(randomtsHrly$Inst)
+
+    plotdata <- randomtsHrly %>% dplyr::select(-Inst) %>%
+      melt(id.vars = "Date") %>%
+      na.omit %>% bind_rows(
+        randomts %>% dplyr::select(c(Time, Signal, TidedSignal)) %>%
+        rename("Date" = "Time") %>% melt(id.vars = "Date")
+        ) %>% bind_cols(RiverTide = "No Interaction")
+
+
+    # small dataframe for calculating residuals (differnce of filtered data to acutal)
+    noTideInteractions <- data.frame(
+      actual = approx(randomts$Time, randomts$Signal, cci$Date)$y,
+      bwf = approx(bwf$Date, bwf$Filtered, cci$Date)$y,
+      cci = cci$avg)
+
+    #########################
+    # With Tide Interactions
+    #set.seed(1103)
+    set.seed(randomSeed)
+
+    randomts <- StevesCoolRandomTS(obs = 500, smoothed = TRUE, randomtimes = TRUE, tideInteractions = TRUE)
+
+    randomts <- randomts %>% mutate(TidedSignal = Signal + Noise)
+    randomtsHrly <- randomts %>% dplyr::select(Time, TidedSignal) %>% changeInterval(Interval = "Hourly", option = "inst")
+
+    bwf <- butterworthFilter(randomtsHrly)
+    randomtsHrly$bwf <- bwf$Filtered
+    cci <- ccInterpFilter(data.frame(randomts$Time,  randomts$TidedSignal), type = "spinterp")
+
+    randomtsHrly$cci <- approx(cci$Date, cci$avg, randomtsHrly$Date)$y
+    randomtsHrly$godin <- godinFilter(randomtsHrly$Inst)
+
+
+    plotdata <- bind_rows(plotdata,
+      randomtsHrly %>% dplyr::select(-Inst) %>%
+      melt(id.vars = "Date") %>%
+      na.omit %>% bind_rows(
+        randomts %>% dplyr::select(c(Time, Signal, TidedSignal)) %>%
+          rename("Date" = "Time") %>% melt(id.vars = "Date")
+      ) %>% bind_cols(RiverTide = "River/Tide Interaction"))
+
+
+
+    # small dataframe for calculating residuals (differnce of filtered data to acutal)
+    withTideInteractions <- data.frame(
+      actual = approx(randomts$Time, randomts$Signal, cci$Date)$y,
+      bwf = approx(bwf$Date, bwf$Filtered, cci$Date)$y,
+      cci = cci$avg)
+
+    ###########################
+    ## Butterworth
+    #############################
+
+    res1bwf <- withTideInteractions$bwf - withTideInteractions$actual
+    res2bwf <- noTideInteractions$bwf - noTideInteractions$actual
+    df <- data.frame( residual_diff = res1bwf - res2bwf,
+                      mean_residuals = ( res1bwf + res1bwf ) / 2 ,
+                      Filter = "Butterworth")
+    #######################################
+    # ccInterp
+    #############################
+    res1cci <- withTideInteractions$cci - withTideInteractions$actual
+    res2cci <- noTideInteractions$cci - noTideInteractions$actual
+    df <- bind_rows(df,
+                    data.frame(residual_diff = res1cci - res2cci,
+                               mean_residuals = ( res1cci + res2cci ) / 2,
+                               Filter = "ccInterp"))
+
+    # dataset for levene test
+
+    ###########################################
+    # Levene test to test for significance
+    # <0.05 filter result is different depending on the assumptions of synthetic tides
+    library(car) # for levene
+
+    leveneData <- bind_rows(
+    withTideInteractions %>% mutate(group = "withInteractions"),
+    noTideInteractions %>% mutate(group = "noInteractions"))
+    modelbwf <- lm(actual ~ bwf,  data = leveneData)
+    modelcci <- lm(actual ~ cci,  data = leveneData)
+    levenebwf <- leveneTest(abs(residuals(modelbwf)) ~ group, data =  leveneData)
+    levenecci <- leveneTest(abs(residuals(modelcci)) ~ group, data =  leveneData)
+
+    bwfpvalues[i] <- levenebwf$`Pr(>F)`[1]
+    ccipvalues[i] <- levenecci$`Pr(>F)`[1]
+
+    ###################################################
+    print( paste( "BWF:", bwfpvalues[i] ) )
+    print( paste( "CCI:", ccipvalues[i] ) )
+
+    print(randomSeed)
+  }
+
+  # from 1000 trials
+  bwfpvalues[bwfpvalues < 0.05] %>% length
+  paste( bwfpvalues[bwfpvalues < 0.05] %>% length /reps*100, "% Significant", sep = "")
+
+  ccipvalues[ccipvalues < 0.05] %>% length
+  paste( ccipvalues[ccipvalues < 0.05] %>% length /reps*100, "% Significant", sep = "")
+
+  testingstability <- data.frame(cci = rep(0, reps), bwf = rep(0, reps))
+  for(i in 1:reps)
+  {
+    testingstability$cci[i] <- ccipvalues[1:i][ccipvalues[1:i] < 0.05] %>% length /i * 100
+    testingstability$bwf[i] <- bwfpvalues[1:i][bwfpvalues[1:i] < 0.05] %>% length /i * 100
+  }
+  tail(testingstability)
+
+  testingstability$Index <- as.numeric(row.names(testingstability))
+  melt(testingstability, id.vars = "Index") %>% ggplot(aes(x = Index, y = value, colour = variable)) +
+    geom_line()
+
+  ###############################################
+  # Plots for paper
+  #
+  # 1428 is good, 2 main picks and a dip
+  # 62304 becomes worse at peak
+  # 20852 is a great example, even though the cci variance is changed
+  #########
+  randomSeed <- 42412 # majorly missed peak, accentuated rining at beginning of event
+  #########         strong trend in balnd-altman
+  #randomSeed <- sample(1:1000, 1)
+  #randomSeed <- as.integer((as.numeric(Sys.time()) * 1000) %% 100) * randomSeed
+
+  set.seed(randomSeed)
+  print(randomSeed)
+
+  par(mfrow=c(1,2))
+  #set.seed(1103)
+  #set.seed(randomSeed)
+
+  randomts <- StevesCoolRandomTS(maxFlow = 400, obs = 400, maxNoise = 400, smoothed = TRUE, randomtimes = TRUE, tideInteractions = FALSE)
+  #randomts <- StevesCoolRandomTS(obs = 500, smoothed = TRUE, randomtimes = TRUE, tideInteractions = FALSE)
+
+  randomts <- randomts %>% mutate(TidedSignal = Signal + Noise)
+  randomtsHrly <- randomts %>% dplyr::select(Time, TidedSignal) %>% changeInterval(Interval = "Hourly", option = "inst")
+
+  bwf <- butterworthFilter(randomtsHrly)
+  randomtsHrly$bwf <- bwf$Filtered
+  cci <- ccInterpFilter(data.frame(randomts$Time,  randomts$TidedSignal), type = "spinterp")
+
+  randomtsHrly$cci <- approx(cci$Date, cci$avg, randomtsHrly$Date)$y
+  randomtsHrly$godin <- godinFilter(randomtsHrly$Inst)
+
+  plotdata <- randomtsHrly %>% dplyr::select(-Inst) %>%
+    melt(id.vars = "Date") %>%
+    na.omit %>% bind_rows(
+      randomts %>% dplyr::select(c(Time, Signal, TidedSignal)) %>%
+        rename("Date" = "Time") %>% melt(id.vars = "Date")
+    ) %>% bind_cols(RiverTide = "No Interaction")
+
+
+  # small dataframe for calculating residuals (differnce of filtered data to acutal)
+  noTideInteractions <- data.frame(
+    actual = approx(randomts$Time, randomts$Signal, cci$Date)$y,
+    bwf = approx(bwf$Date, bwf$Filtered, cci$Date)$y,
+    cci = cci$avg)
+
+  #########################
+  # With Tide Interactions
+  #set.seed(1103)
+  set.seed(randomSeed)
+
+  randomts <- StevesCoolRandomTS(maxFlow = 400, obs = 400, maxNoise = 400, smoothed = TRUE, randomtimes = TRUE, tideInteractions = TRUE)
+  #randomts <- StevesCoolRandomTS(obs = 500, smoothed = TRUE, randomtimes = TRUE, tideInteractions = TRUE)
+
+  randomts <- randomts %>% mutate(TidedSignal = Signal + Noise)
+  randomtsHrly <- randomts %>% dplyr::select(Time, TidedSignal) %>% changeInterval(Interval = "Hourly", option = "inst")
+
+  bwf <- butterworthFilter(randomtsHrly)
+  randomtsHrly$bwf <- bwf$Filtered
+  cci <- ccInterpFilter(data.frame(randomts$Time,  randomts$TidedSignal), type = "spinterp")
+
+  randomtsHrly$cci <- approx(cci$Date, cci$avg, randomtsHrly$Date)$y
+  randomtsHrly$godin <- godinFilter(randomtsHrly$Inst)
+
+
+  plotdata <- bind_rows(plotdata,
+                        randomtsHrly %>% dplyr::select(-Inst) %>%
+                          melt(id.vars = "Date") %>%
+                          na.omit %>% bind_rows(
+                            randomts %>% dplyr::select(c(Time, Signal, TidedSignal)) %>%
+                              rename("Date" = "Time") %>% melt(id.vars = "Date")
+                          ) %>% bind_cols(RiverTide = "River/Tide Interaction"))
+
+
+
+  # small dataframe for calculating residuals (differnce of filtered data to acutal)
+  withTideInteractions <- data.frame(
+    actual = approx(randomts$Time, randomts$Signal, cci$Date)$y,
+    bwf = approx(bwf$Date, bwf$Filtered, cci$Date)$y,
+    cci = cci$avg)
+
+  # simple model residual plots
+
+  bwf <- butterworthFilter(randomtsHrly)
+  godin <- randomtsHrly %>% mutate(godin = godinFilter(Inst))
+
+  cci <- ccInterpFilter(randomts %>% mutate(tided = Signal+Noise ) %>% dplyr::select(c(Time, tided)))
+  points( cci %>% dplyr::select(Date, avg) %>% changeInterval(option = "sum") , col = "blue")
+
+  df <- data.frame(Date = cci$Date,
+                   signal = approx(randomts$Time, randomts$Signal, cci$Date)$y,
+                   bwf = approx(bwf$Date, bwf$Filtered, cci$Date)$y,
+                   godin =  approx(godin$Date, godin$godin, cci$Date)$y,
+                   cci = cci$avg)
+
+  bwfmodel <- lm(signal ~ bwf, data = df)
+  ccimodel <- lm(signal ~ cci, data = df)
+  godinmodel <- lm(signal ~ godin, data = df)
+
+  par(mfrow = c(1,1))
+  plot(resid(bwfmodel) ~ fitted(bwfmodel), ylim = c(-100,100), col = "orange")
+  points(resid(ccimodel) ~ fitted(ccimodel), col = "blue")
+  points(resid(godinmodel) ~ fitted(godinmodel), col = "darkgreen")
+
+
+  summary(bwfmodel)
+  summary(ccimodel)
+  summary(godinmodel)
+
+  range(randomts$Signal)
+  range(randomts$Time)
+
+
+  ###################
+  #    # Butterworth
+  #############################
+
+  res1bwf <- withTideInteractions$bwf - withTideInteractions$actual
+  res2bwf <- noTideInteractions$bwf - noTideInteractions$actual
+  df <- data.frame( residual_diff = res1bwf - res2bwf,
+                    mean_residuals = ( res1bwf + res1bwf ) / 2 ,
+                    Filter = "Butterworth")
+  #######################################
+  # ccInterp
+  #############################
+  res1cci <- withTideInteractions$cci - withTideInteractions$actual
+  res2cci <- noTideInteractions$cci - noTideInteractions$actual
+  df <- bind_rows(df,
+                  data.frame(residual_diff = res1cci - res2cci,
+                             mean_residuals = ( res1cci + res2cci ) / 2,
+                             Filter = "ccInterp"))
+
+  # dataset for levene test
+
+  ###########################################
+  # Levene test to test for significance
+  # <0.05 filter result is different depending on the assumptions of synthetic tides
+  library(car) # for levene
+
+  leveneData <- bind_rows(
+    withTideInteractions %>% mutate(group = "withInteractions"),
+    noTideInteractions %>% mutate(group = "noInteractions"))
+  modelbwf <- lm(actual ~ bwf,  data = leveneData)
+  modelcci <- lm(actual ~ cci,  data = leveneData)
+  levenebwf <- leveneTest(abs(residuals(modelbwf)) ~ group, data =  leveneData)
+  levenecci <- leveneTest(abs(residuals(modelcci)) ~ group, data =  leveneData)
+  bwfpvalues[i] <- levenebwf$`Pr(>F)`[1]
+  ccipvalues[i] <- levenecci$`Pr(>F)`[1]
+
+  modelinteractions <- lm(actual ~ value, data = melt(withTideInteractions, id.var = "actual"))
+  leveneBetweenFilters <- leveneTest(abs(residuals(modelinteractions)) ~ variable, data =  melt(withTideInteractions, id.var = "actual"))
+  betweenvalues[i] <- leveneBetweenFilters$`Pr(>F)`[1]
+
+  #betweenvaluesNoInt
+  modelinteractions <- lm(actual ~ value, data = melt(noTideInteractions, id.var = "actual"))
+  leveneBetweenFilters <- leveneTest(abs(residuals(modelinteractions)) ~ variable, data =  melt(noTideInteractions, id.var = "actual"))
+  betweenvaluesNoInt[i] <- leveneBetweenFilters$`Pr(>F)`[1]
+
+
+  ###################################################
+  print( paste( "BWF:", bwfpvalues[i] ) )
+  print( paste( "CCI:", ccipvalues[i] ) )
+
+
+  ##############################
+  # Plotting
+
+  ###########################
+  # ggplot comparing traces
+  ##########################
+  color_mapping <- c(
+    "TidedSignal" = "grey",
+    "Signal" = "black",
+    "godin" = "darkgreen",
+    "cci" = "blue",
+    "bwf" = "orange"
+  )
+  # Define line thickness
+  size_mapping <- c(
+    "TidedSignal" = 0.5,  # Thin
+    "Signal" = 3,       # Thick
+    "godin" = 1.5,        # Thin
+    "cci" = 1.5,          # Thin
+    "bwf" = 1.5           # Thin
+  )
+  plotdata$variable <- factor(plotdata$variable, levels = c("TidedSignal", "Signal", "godin", "cci", "bwf"))
+
+  comparetraces <- plotdata %>% ggplot(aes(x = Date, y = value, colour = variable, size = variable)) +
+    geom_line() +
+    facet_grid(. ~ RiverTide) +
+    scale_color_manual(values = color_mapping)  +
+    scale_size_manual(values = size_mapping) +
+    theme_minimal()
+  comparetraces
+  #######################################################
+  #######################################################
+
+  ##########################################
+  #
+  # Bland-Altman Plots
+  #
+  #######################################
+
+
+  data_summary <- df %>%
+    group_by(Filter) %>%
+    summarise(
+      mean_diff = mean(residual_diff),
+      sd_diff = sd(residual_diff),
+      lower_limit = mean_diff - 1.96 * sd_diff,
+      upper_limit = mean_diff + 1.96 * sd_diff
+    ) %>%
+    mutate(p_value = case_when(
+      Filter == "Butterworth" ~ bwfpvalues[i],
+      Filter == "ccInterp" ~ ccipvalues[i]
+    ))
+
+
+  # Merge computed values back into the main data frame
+  df <- merge(df, data_summary, by = "Filter")
+
+  # Create Bland-Altman plot with facets
+  blandaltman <- ggplot(df, aes(x = mean_residuals, y = residual_diff)) +
+    geom_point(color = "blue") +  # Scatter plot points
+    geom_hline(aes(yintercept = mean_diff), color = "red", linetype = "solid", size = 1) +  # Mean difference
+    geom_hline(aes(yintercept = lower_limit), color = "red", linetype = "dashed", size = 1) +  # -1.96 SD
+    geom_hline(aes(yintercept = upper_limit), color = "red", linetype = "dashed", size = 1) +  # +1.96 SD
+    labs(title = "Bland-Altman Plot",
+         x = "Residual mean",
+         y = "Residual WithInteractions - Residual NoInteractions") +
+    #theme_minimal() +
+    facet_grid(. ~ Filter) +  # Facet by "Filter" (2 plots side by side)
+    geom_text(data = data_summary, aes(x = min(df$mean_residuals), y = max(df$residual_diff),
+                                       label = paste("p =", signif(p_value, 3))),
+              hjust = 0, vjust = 1.5, fontface = "bold", inherit.aes = FALSE)
+
+
+  comparetraces /
+    blandaltman + theme_minimal()
+
+
+
+  print(randomSeed)
+
+
+  ##########################################
+  # End of Bland-Altman Plots
+  #######################################
+
 
   #####################################
   # Response functions
   #
 
-  randomSeed <- sample(1:10000, 1)
+  randomSeed <- sample(1:1000, 1)
+  randomSeed <- as.integer((as.numeric(Sys.time()) * 1000) %% 100) * randomSeed
+  #randomSeed <- 1301
+  set.seed(randomSeed)
+  print(randomSeed)
 
-  randomSeed <- 959
+
+
+  #randomSeed <- 959
+  #randomSeed <- 1103
   set.seed(randomSeed)
 
 
-  randomts <- StevesCoolRandomTS(maxFlow = 1000, obs = 10000, maxNoise = 200, smoothed = TRUE, randomtimes = TRUE)
+  randomts <- StevesCoolRandomTS(maxFlow = 1000, obs = 10000, maxNoise = 200, smoothed = TRUE, randomtimes = TRUE, tideInteractions = TRUE)
 
-  xts(randomts$Signal, randomts$Time) %>% dygraph
+  xts(randomts$Signal+randomts$Noise, randomts$Time) %>% dygraph
 
   plot(randomts$Time, randomts$Signal)
 
@@ -186,10 +586,11 @@ if(FALSE)
   data.frame ( Period = filtered_period_gdn, Amplitude = filtered_amp_gdn, Dataset = "Godin" ))
 
   head(Periodograms)
+  library(scales)
   Periodograms %>% ggplot(aes(x = Period, y = Amplitude)) +
     geom_point()  +
     scale_x_continuous(trans = "log2", breaks = c(3, 6, 12, 24, 48, 168, 672, 8760),
-                       minor_b) +
+                       minor_breaks = FALSE) +  # Set appropriate minor breaks
     scale_y_log10(breaks = trans_breaks("log10", function(x) 10^x),
                   labels = trans_format("log10", math_format(10^.x))) +
     theme_minimal() +
@@ -270,6 +671,8 @@ if(FALSE)
 
   print(randomSeed)
 
+  # skw to here
+
 
   library(data.table)
   library(ggplot2)
@@ -285,7 +688,8 @@ if(FALSE)
   library(matrixStats)
   stdev <- rowSds(as.matrix(cci[2:(length(cci) - 1)]))
 
-  #xts(randomts$Signal, randomts$Time) %>% dygraph
+  xts(randomts$Signal, randomts$Time) %>% dygraph
+
 
   cciConfi <- data.frame(Date = cci$Date, avg = cci$avg,
                          raw = approx(randomts$Time, randomts$TidedSignal, cci$Date)$y,
@@ -304,8 +708,8 @@ if(FALSE)
   melt(cci_subset, id.vars = "Date") %>% ggplot(aes(x = Date, y = value, colour = variable)) +
     geom_line()
 
-
-  melt(cciConfi[3000:4000,], id.vars = "Date") %>% ggplot(aes(x = Date, y = value, colour = variable)) +
+  maxvalue <- which.max(cciConfi$raw)
+  melt(cciConfi[(maxvalue-500):(maxvalue+500),], id.vars = "Date") %>% ggplot(aes(x = Date, y = value, colour = variable)) +
     geom_line()
 
 
@@ -321,8 +725,8 @@ if(FALSE)
   #qMerged <- mergeTS(qPre2024, q2024)
   #saveRDS(qMerged, "RREQ.rds")
 
-  realQ <- readRDS("data/JRIQ.rds")
-  #realQ <- readRDS("data/MulgraveQ.rds")
+  #realQ <- readRDS("data/JRIQ.rds")
+  realQ <- readRDS("data/MulgraveQ.rds")
 
   range(realQ$time)
   range(realQ$value_Discharge)
@@ -343,6 +747,18 @@ if(FALSE)
 
   randomts <- changeInterval(data.frame(realQ$time, realQ$value_Discharge), Interval = "Hourly", option = "inst")
   names(randomts) <- c("Time", "TidedSignal")
+
+  river_data <- ts(randomts$TidedSignal, frequency = 24*365)
+  river_fft <- fft(river_data)
+  amplitudes <- Mod(river_fft)  # Compute the magnitude (amplitude)
+  frequencies <- seq(0, length(river_data) - 1) / length(river_data)  # Compute frequencies
+
+  ggplot(data.frame(frequencies, amplitudes), aes(x = 1/frequencies, y = amplitudes)) +
+    geom_line() +
+    scale_x_log10() +  # If you want to show frequencies on a log scale
+    labs(title = "Frequency Spectrum of River Data", x = "Frequency", y = "Amplitude")
+
+
 
 
   # Define a simple moving average filter

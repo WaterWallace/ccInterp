@@ -26,7 +26,7 @@
 #'
 #' @export
 
-StevesCoolRandomTS <- function(maxFlow=500*runif(1), maxNoise=500*runif(1), obs=10000, smoothed=TRUE, randomtimes = FALSE)
+StevesCoolRandomTS <- function(maxFlow=500*runif(1), maxNoise=1000*runif(1), obs=10000, smoothed=TRUE, randomtimes = FALSE, tideInteractions = TRUE)
 {
 
   end <- Sys.Date() - obs/24
@@ -36,6 +36,7 @@ StevesCoolRandomTS <- function(maxFlow=500*runif(1), maxNoise=500*runif(1), obs=
   randomMinutes <- rnorm(obs, mean = 60, sd = 30) # create 1000 random intervals
   randomMinutes <- randomMinutes[randomMinutes > 10] # exclude intervals less than 10 minutes
   randomMinutes <- as.POSIXct(cumsum(randomMinutes)*60, origin=as.Date(start, origin="1970-01-01"))
+
   # build a data frame of times and values
   df <- data.frame(Time = randomMinutes,
                    Signal = cumsum(rnorm(length(randomMinutes), mean = 0, sd = 1)) *
@@ -46,7 +47,6 @@ StevesCoolRandomTS <- function(maxFlow=500*runif(1), maxNoise=500*runif(1), obs=
   df$Signal <- round(df$Signal, digits = 3)
   df$Signal <- df$Signal * c(0, df$Signal[-nrow(df)])
 
-
   if(smoothed)
   {
     hourly <- changeInterval(data.frame(df$Time, df$Signal), Interval = "Hourly", option="inst")
@@ -55,21 +55,23 @@ StevesCoolRandomTS <- function(maxFlow=500*runif(1), maxNoise=500*runif(1), obs=
     if(!randomtimes){
       df <- data.frame(Time = hourly$Date, Signal = godin)
     }else{
-      df <- data.frame(Time = df$Time, Signal = approx(hourly$Date, hourly$Inst, df$Time)$y)
+      df <- data.frame(Time = df$Time, Signal = approx(hourly$Date, godin, df$Time)$y)
     }
     df <- na.omit(df)
 
   }
 
   t <- as.numeric( df[,1] ) /60/60/24
+  # Sun driven cycle
+  d1 <- sin( 2*pi * t) *
+    10 * sin( ( 1/365.25 ) * 2*pi * t+180)
   # Moon driven cycle
-  d1 <- 5 * sin( 24/(12+(25/60)) * 2*pi * t) *
+  d2 <- 5 * sin( 24/(12+(25/60)) * 2*pi * t) *
     1 * sin( ( 1/28 ) * 2*pi * t) *
     10 * sin( ( 1/364 ) * 2*pi * t+180)
-  # Sun driven cycle
-  d2 <- 2 * sin( 2*pi * t) *
-    10 * sin( ( 1/365.25 ) * 2*pi * t+180)
-  df$Noise <- d1+d2
+
+  noise <- rnorm(length(t), mean = 0, sd = 1)  # Standard Gaussian noise
+  df$Noise <- d1 + d2 + noise  # Add noise to tide
 
   # Define parameters
   days <- 1:365         # Days of the year
@@ -79,14 +81,41 @@ StevesCoolRandomTS <- function(maxFlow=500*runif(1), maxNoise=500*runif(1), obs=
   # Calculate the sine wave
   annual <- sin((2 * pi / 365) * t + 0) ^ 2
   df$Signal <- df$Signal + ( annual + abs(min(annual) ))
-
   df$Signal <- round( df$Signal / (max(abs(df$Signal)) / maxFlow) , 3 )
-  df$Noise <- round( df$Noise / (max(df$Noise)/maxNoise), 3 )
+
+  # detrend noise with godin filtered data
+  hourseq <- seq(df$Time[1], df$Time[nrow(df)], by = 60*60 )
+  trend <- approx(df$Time, df$Noise, hourseq)$y %>% godinFilter
+  df <- df %>% mutate(Noise = Noise - approx(hourseq, trend, Time, rule = 2)$y)
+
+  if(tideInteractions)
+  {
+
+    # dampen tide during events
+    df <- df %>% mutate(signalratio = Signal / ( max(df$Signal) - min(df$Signal) ) ) %>%
+      mutate(signalratio = signalratio - min(signalratio))
+    #df <- df %>% mutate(TideInteraction = Noise - ( Noise * (1-signalratio)))
+
+    noisediff <- df$Noise - (  df$Noise * (1-df$signalratio) )
+    df <- df %>% mutate(Noise =  Noise * (1-signalratio))
+
+    # add lag
+    maxlag = 120 # 120 minutes
+    laggedts <- df %>% mutate(lagminutes = signalratio ^ 0.5  * maxlag) %>%
+      mutate(Time = Time + lagminutes * 60)
+
+    df$Noise <- approx(laggedts$Time, laggedts$Noise, df$Time, rule = 2)$y
+    #df$TideInteraction <- df$TideInteraction + laggdiff
+
+    df <- df %>% dplyr::select(-signalratio)
+    #df <- df %>% mutate(TideInteraction = round( TideInteraction, 3 ))
+
+  }
+
+  # round and normalise to desired values
+  df <- df %>% mutate(Noise = round( Noise / (max(Noise)/maxNoise), 3 ))
 
   return(df)
 
 }
-
-
-
 
