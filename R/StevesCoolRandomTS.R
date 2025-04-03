@@ -25,7 +25,7 @@
 #'  lines(rough$Time, rough$Signal+rough$Noise, col='red')
 #'
 #' @export
-StevesCoolRandomTS <- function(maxFlow=500*runif(1), maxNoise=1000*runif(1), obs=10000, smoothed=TRUE, randomtimes = FALSE, tideInteractions = TRUE)
+StevesCoolRandomTS <- function(maxFlow=500*runif(1), maxNoise=500*runif(1), obs=10000, smoothed=TRUE, randomtimes = FALSE, tideInteractions = TRUE)
 {
 
   end <- Sys.Date() - obs/24

@@ -54,9 +54,10 @@ if(FALSE)
   print(randomSeed)
 
   # Multiple random trials
-  reps <- 1000
-  bwfpvalues <- rep(0, reps)
-  ccipvalues <- rep(0, reps)
+  reps <- 10000
+  #bwfpvalues <- rep(0, reps)
+  #ccipvalues <- rep(0, reps)
+  pvalues <- list()
   for(i in seq(1:reps))
   {
 
@@ -72,7 +73,7 @@ if(FALSE)
     set.seed(randomSeed)
     print(randomSeed)
 
-    randomts <- StevesCoolRandomTS(obs = 500, smoothed = TRUE, randomtimes = TRUE, tideInteractions = FALSE)
+    randomts <- StevesCoolRandomTS(obs = 500, smoothed = TRUE, randomtimes = TRUE, tideInteractions = TRUE)
 
     randomts <- randomts %>% mutate(TidedSignal = Signal + Noise)
     randomtsHrly <- randomts %>% dplyr::select(Time, TidedSignal) %>% changeInterval(Interval = "Hourly", option = "inst")
@@ -101,12 +102,10 @@ if(FALSE)
     #########################
     # With Tide Interactions
     #set.seed(1103)
-    set.seed(randomSeed)
-
-    randomts <- StevesCoolRandomTS(obs = 500, smoothed = TRUE, randomtimes = TRUE, tideInteractions = TRUE)
-
-    randomts <- randomts %>% mutate(TidedSignal = Signal + Noise)
+    #set.seed(randomSeed)
+    randomts <- randomts %>% mutate(TidedSignal = Signal + Noise + TideInteraction )
     randomtsHrly <- randomts %>% dplyr::select(Time, TidedSignal) %>% changeInterval(Interval = "Hourly", option = "inst")
+
 
     bwf <- butterworthFilter(randomtsHrly)
     randomtsHrly$bwf <- bwf$Filtered
@@ -166,17 +165,68 @@ if(FALSE)
     levenebwf <- leveneTest(abs(residuals(modelbwf)) ~ group, data =  leveneData)
     levenecci <- leveneTest(abs(residuals(modelcci)) ~ group, data =  leveneData)
 
-    bwfpvalues[i] <- levenebwf$`Pr(>F)`[1]
-    ccipvalues[i] <- levenecci$`Pr(>F)`[1]
+    pvalues[[i]] <-     data.frame(trial = i,
+                                   "Butterworth" = levenebwf$`Pr(>F)`[1],
+                                   "ccInterp" = levenecci$`Pr(>F)`[1]
+    ) %>% melt(id.var= "trial") %>%
+      mutate( TideRatio = max(randomts$Signal)/max(randomts$Noise)) %>%
+      rename( "pvalue" = value)
 
     ###################################################
-    print( paste( "BWF:", bwfpvalues[i] ) )
-    print( paste( "CCI:", ccipvalues[i] ) )
+    #print( paste( "BWF:", bwfpvalues[i] ) )
+    #print( paste( "CCI:", ccipvalues[i] ) )
 
     print(randomSeed)
   }
 
-  # from 1000 trials
+  #savedpvalues
+  #pvalues <- pvaluessaved
+
+  pvalues <- pvalues %>% bind_rows
+
+  pvalues <- pvalues %>% mutate(Significant = ifelse(pvalue < 0.05, TRUE, FALSE))
+
+  # Define refined logarithmic bins
+  bin_breaks <- c(0.001, 0.0032, 0.01, 0.032, 0.1, 0.32, 1, 3.2, 10, 32, 100, Inf)
+  bin_labels <- c("0.001-0.0032", "0.0032-0.01", "0.01-0.032", "0.032-0.1",
+                  "0.1-0.32", "0.32-1", "1-3.2", "3.2-10", "10-32", "32-100", ">100")
+
+  pvalues <- pvalues %>%
+    mutate(TideRatioBin = cut(TideRatio, breaks = bin_breaks, labels = bin_labels, include.lowest = TRUE, right = FALSE))
+
+  # Compute percentage of TRUE values per bin and filter type
+  result <- pvalues %>%
+    group_by(TideRatioBin, variable) %>%
+    summarise(
+      Count_True = sum(Significant),
+      Total = n(),
+      Percentage = (Count_True / Total) * 100,
+      .groups = 'drop'
+    )
+
+
+  # Plot results with rotated count labels
+  ggplot(result %>% na.omit, aes(x = TideRatioBin, y = Percentage, fill = variable)) +
+    geom_bar(stat = "identity", position = "dodge") +
+    geom_text(aes(label = paste0("n=", Total)),
+              position = position_dodge(width = 0.9),
+              vjust = 0.5, hjust = -0.2,  # Adjust text positioning
+              angle = 90, size = 4) +  # Rotate text 90 degrees
+    scale_y_continuous(labels = scales::percent_format(scale = 1)) +  # Format as percentages
+    labs(title = "Percentage of Significant Results by Tide Ratio", x = "Tide Ratio Bin", y = "Percentage (%)") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+    ylim (c(0,100))
+    coord_cartesian(clip = 'off')  # Prevent clipping of labels
+
+  #pvaluessaved <- pvalues
+  bwfpvalues <- pvalues[pvalues$variable == "Butterworth",]$pvalue
+  ccipvalues <- pvalues[pvalues$variable == "ccInterp",]$pvalue
+
+  pvalues %>% bind_rows %>% ggplot(aes(x = log(TideRatio), y = log(pvalue), colour = variable)) +
+    geom_point()
+
+    # from 1000 trials
   bwfpvalues[bwfpvalues < 0.05] %>% length
   paste( bwfpvalues[bwfpvalues < 0.05] %>% length /reps*100, "% Significant", sep = "")
 
@@ -200,11 +250,11 @@ if(FALSE)
   #
   # 1428 is good, 2 main picks and a dip
   # 62304 becomes worse at peak
-  # 20852 is a great example, even though the cci variance is changed
+  # randomSeed <- 20852 is a great example, even though the cci variance is changed
   #########
   randomSeed <- 42412 # majorly missed peak, accentuated rining at beginning of event
   #########         strong trend in balnd-altman
-  #randomSeed <- sample(1:1000, 1)
+  randomSeed <- sample(1:1000, 1)
   #randomSeed <- as.integer((as.numeric(Sys.time()) * 1000) %% 100) * randomSeed
 
   set.seed(randomSeed)
@@ -214,7 +264,8 @@ if(FALSE)
   #set.seed(1103)
   #set.seed(randomSeed)
 
-  randomts <- StevesCoolRandomTS(maxFlow = 400, obs = 400, maxNoise = 400, smoothed = TRUE, randomtimes = TRUE, tideInteractions = FALSE)
+  randomts <- StevesCoolRandomTS(maxFlow = 800, obs = 400, maxNoise = 400, smoothed = TRUE, randomtimes = TRUE, tideInteractions = TRUE)
+  #randomts <- StevesCoolRandomTS(maxFlow = 400, obs = 400, maxNoise = 400, smoothed = TRUE, randomtimes = TRUE, tideInteractions = FALSE)
   #randomts <- StevesCoolRandomTS(obs = 500, smoothed = TRUE, randomtimes = TRUE, tideInteractions = FALSE)
 
   randomts <- randomts %>% mutate(TidedSignal = Signal + Noise)
@@ -244,12 +295,13 @@ if(FALSE)
   #########################
   # With Tide Interactions
   #set.seed(1103)
-  set.seed(randomSeed)
+  #set.seed(randomSeed)
 
-  randomts <- StevesCoolRandomTS(maxFlow = 400, obs = 400, maxNoise = 400, smoothed = TRUE, randomtimes = TRUE, tideInteractions = TRUE)
+  #randomts <- StevesCoolRandomTS(maxFlow = 800, obs = 400, maxNoise = 400, smoothed = TRUE, randomtimes = TRUE, tideInteractions = TRUE)
+  #randomts <- StevesCoolRandomTS(maxFlow = 400, obs = 400, maxNoise = 400, smoothed = TRUE, randomtimes = TRUE, tideInteractions = TRUE)
   #randomts <- StevesCoolRandomTS(obs = 500, smoothed = TRUE, randomtimes = TRUE, tideInteractions = TRUE)
 
-  randomts <- randomts %>% mutate(TidedSignal = Signal + Noise)
+  randomts <- randomts %>% mutate(TidedSignal = Signal + Noise + TideInteraction)
   randomtsHrly <- randomts %>% dplyr::select(Time, TidedSignal) %>% changeInterval(Interval = "Hourly", option = "inst")
 
   bwf <- butterworthFilter(randomtsHrly)
@@ -276,8 +328,9 @@ if(FALSE)
     bwf = approx(bwf$Date, bwf$Filtered, cci$Date)$y,
     cci = cci$avg)
 
+  #################################################
   # simple model residual plots
-
+  #
   bwf <- butterworthFilter(randomtsHrly)
   godin <- randomtsHrly %>% mutate(godin = godinFilter(Inst))
 
