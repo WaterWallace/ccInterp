@@ -7,6 +7,7 @@ if(FALSE)
   library(dplyr)
   library(pracma)
   library(ggplot2)
+  library(data.table)
   ################################
   # start/end of data
   #
@@ -25,6 +26,8 @@ if(FALSE)
   # 5905 rapid rises causes ringing at the beginning of an event. # good one
   randomts <- StevesCoolRandomTS(maxFlow = 500, obs = 200, maxNoise = 200, smoothed = FALSE, randomtimes = TRUE)
   #seq(randomts$Time[1], randomts$Time[1])
+  # 5536 large rining before event
+
 
   randomts <- randomts %>% mutate(TidedSignal = Signal + Noise)
   plot(randomts$Time, randomts$TidedSignal)
@@ -54,7 +57,7 @@ if(FALSE)
   print(randomSeed)
 
   # Multiple random trials
-  reps <- 10000
+  reps <- 500
   #bwfpvalues <- rep(0, reps)
   #ccipvalues <- rep(0, reps)
   pvalues <- list()
@@ -165,12 +168,17 @@ if(FALSE)
     levenebwf <- leveneTest(abs(residuals(modelbwf)) ~ group, data =  leveneData)
     levenecci <- leveneTest(abs(residuals(modelcci)) ~ group, data =  leveneData)
 
+    # limit the data max to the extent of cci window
+    maxsignal <- approx(randomts$Time, randomts$Signal, cci$Date)$y %>% max
+    maxnoise <- approx(randomts$Time, randomts$Noise, cci$Date)$y %>% max
+
     pvalues[[i]] <-     data.frame(trial = i,
                                    "Butterworth" = levenebwf$`Pr(>F)`[1],
                                    "ccInterp" = levenecci$`Pr(>F)`[1]
     ) %>% melt(id.var= "trial") %>%
-      mutate( TideRatio = max(randomts$Signal)/max(randomts$Noise)) %>%
-      rename( "pvalue" = value)
+      mutate( TideRatio = maxsignal/maxnoise) %>%
+      rename( "pvalue" = value) %>%
+      mutate( d1d2Ratio = randomts$d1d2ratio[1])
 
     ###################################################
     #print( paste( "BWF:", bwfpvalues[i] ) )
@@ -178,6 +186,7 @@ if(FALSE)
 
     print(randomSeed)
   }
+
 
   #savedpvalues
   #pvalues <- pvaluessaved
@@ -204,16 +213,16 @@ if(FALSE)
       .groups = 'drop'
     )
 
-
+  result %>% na.omit %>%
   # Plot results with rotated count labels
-  ggplot(result %>% na.omit, aes(x = TideRatioBin, y = Percentage, fill = variable)) +
+  ggplot(aes(x = TideRatioBin, y = Percentage, fill = variable)) +
     geom_bar(stat = "identity", position = "dodge") +
     geom_text(aes(label = paste0("n=", Total)),
               position = position_dodge(width = 0.9),
               vjust = 0.5, hjust = -0.2,  # Adjust text positioning
               angle = 90, size = 4) +  # Rotate text 90 degrees
-    scale_y_continuous(labels = scales::percent_format(scale = 1)) +  # Format as percentages
-    labs(title = "Percentage of Significant Results by Tide Ratio", x = "Tide Ratio Bin", y = "Percentage (%)") +
+    #scale_y_continuous(labels = scales::percent_format(scale = 1)) +  # Format as percentages
+    labs(title = "Percentage of Significant Results by Tide Ratio", x = "Tide Ratio", y = "Percent Significant (%)", fill = "Filter") +
     theme_minimal() +
     theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
     ylim (c(0,100))
@@ -245,6 +254,20 @@ if(FALSE)
   melt(testingstability, id.vars = "Index") %>% ggplot(aes(x = Index, y = value, colour = variable)) +
     geom_line()
 
+
+
+  pvalues$logpvalue <- log10(pvalues$pvalue)
+
+  # Run ANOVA with interaction terms
+  anova_model <- aov(logpvalue ~ TideRatio * variable * d1d2Ratio, data = pvalues)
+  # Print summary of ANOVA
+  summary(anova_model)
+  tukey_result <- TukeyHSD(anova_model)
+  print(tukey_result)
+  plot(tukey_result)
+
+
+
   ###############################################
   # Plots for paper
   #
@@ -264,7 +287,7 @@ if(FALSE)
   #set.seed(1103)
   #set.seed(randomSeed)
 
-  randomts <- StevesCoolRandomTS(maxFlow = 800, obs = 400, maxNoise = 400, smoothed = TRUE, randomtimes = TRUE, tideInteractions = TRUE)
+  randomts <- StevesCoolRandomTS(maxFlow = 1280, obs = 4000, maxNoise = 400, smoothed = TRUE, randomtimes = TRUE, tideInteractions = TRUE)
   #randomts <- StevesCoolRandomTS(maxFlow = 400, obs = 400, maxNoise = 400, smoothed = TRUE, randomtimes = TRUE, tideInteractions = FALSE)
   #randomts <- StevesCoolRandomTS(obs = 500, smoothed = TRUE, randomtimes = TRUE, tideInteractions = FALSE)
 
@@ -328,6 +351,11 @@ if(FALSE)
     bwf = approx(bwf$Date, bwf$Filtered, cci$Date)$y,
     cci = cci$avg)
 
+  xts(withTideInteractions, cci$Date) %>% dygraph
+  xts(noTideInteractions, cci$Date) %>% dygraph
+
+
+
   #################################################
   # simple model residual plots
   #
@@ -335,7 +363,7 @@ if(FALSE)
   godin <- randomtsHrly %>% mutate(godin = godinFilter(Inst))
 
   cci <- ccInterpFilter(randomts %>% mutate(tided = Signal+Noise ) %>% dplyr::select(c(Time, tided)))
-  points( cci %>% dplyr::select(Date, avg) %>% changeInterval(option = "sum") , col = "blue")
+  #points( cci %>% dplyr::select(Date, avg) %>% changeInterval(option = "sum") , col = "blue")
 
   df <- data.frame(Date = cci$Date,
                    signal = approx(randomts$Time, randomts$Signal, cci$Date)$y,
@@ -356,6 +384,9 @@ if(FALSE)
   summary(bwfmodel)
   summary(ccimodel)
   summary(godinmodel)
+
+  df
+
 
   range(randomts$Signal)
   range(randomts$Time)
@@ -485,8 +516,10 @@ if(FALSE)
               hjust = 0, vjust = 1.5, fontface = "bold", inherit.aes = FALSE)
 
 
+  library(patchwork)
   comparetraces /
     blandaltman + theme_minimal()
+
 
 
 
@@ -496,6 +529,33 @@ if(FALSE)
   ##########################################
   # End of Bland-Altman Plots
   #######################################
+
+  # DICKEY FULLER TEST
+  install.packages("tseries")
+  library(tseries)
+
+  # Example: Generate an AR(1) time series
+  set.seed(123)
+  y <- arima.sim(model = list(ar = 0.7), n = 100)
+  plot(y)
+
+  # Perform ADF test
+  adf_result <- adf.test(y)
+
+  # View results
+  print(adf_result)
+  ?adf.test
+
+  set.seed(1)
+  noint <- StevesCoolRandomTS(tideInteractions = FALSE)
+  set.seed(1)
+  withint <- StevesCoolRandomTS(tideInteractions = TRUE)
+
+
+
+  adf.test(noint$Signal)
+  plot(noint$Signal)
+  adf.test(withint$Signal+withint$Noise)
 
 
   #####################################
