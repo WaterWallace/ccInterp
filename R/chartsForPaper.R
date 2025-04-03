@@ -57,10 +57,11 @@ if(FALSE)
   print(randomSeed)
 
   # Multiple random trials
-  reps <- 500
+  reps <- 1000
   #bwfpvalues <- rep(0, reps)
   #ccipvalues <- rep(0, reps)
   pvalues <- list()
+  rawvalues <- list()
   for(i in seq(1:reps))
   {
 
@@ -184,6 +185,10 @@ if(FALSE)
     #print( paste( "BWF:", bwfpvalues[i] ) )
     #print( paste( "CCI:", ccipvalues[i] ) )
 
+    rawvalues[[i]] <- leveneData %>% mutate( trial = i ) %>%
+      mutate( TideRatio = maxsignal/maxnoise) %>%
+      mutate( d1d2Ratio = randomts$d1d2ratio[1])
+
     print(randomSeed)
   }
 
@@ -256,14 +261,31 @@ if(FALSE)
 
 
 
-  pvalues$logpvalue <- log10(pvalues$pvalue)
+  rawvalues <- rawvalues %>% bind_rows
 
-  # Run ANOVA with interaction terms
-  anova_model <- aov(logpvalue ~ TideRatio * variable * d1d2Ratio, data = pvalues)
-  # Print summary of ANOVA
+
+  rawvalues <- melt(rawvalues, id.vars = c('actual', 'group', 'trial', 'TideRatio','d1d2Ratio' ))
+  rawvalues$error <- rawvalues$value - rawvalues$actual
+
+
+  anova_model <- aov(error ~ group*TideRatio*d1d2Ratio*variable, data = rawvalues)
   summary(anova_model)
+
+  lm_model <- lm(error ~ group * TideRatio * d1d2Ratio * variable, data = rawvalues)
+  summary(lm_model)
+
+
+  # Check assumptions: Normality of residuals
+  shapiro.test(residuals(anova_model))  # Should not be significant (p > 0.05)
+
+  # Check assumptions: Homogeneity of variance
+  leveneTest(error ~ group * variable, data = rawvalues)  # p > 0.05 means equal variance
+
+  # Perform Tukey's HSD test for pairwise comparisons
   tukey_result <- TukeyHSD(anova_model)
   print(tukey_result)
+
+  # Plot Tukey results
   plot(tukey_result)
 
 
