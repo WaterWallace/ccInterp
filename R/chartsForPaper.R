@@ -24,12 +24,16 @@ if(FALSE)
 
   # 5698 rapid rises causes ringing at the beginning of an event.
   # 5905 rapid rises causes ringing at the beginning of an event. # good one
-  randomts <- StevesCoolRandomTS(maxFlow = 500, obs = 200, maxNoise = 200, smoothed = FALSE, randomtimes = TRUE)
+  randomts <- StevesCoolRandomTS(maxFlow = 200, obs = 200, maxNoise = 200, smoothed = FALSE, randomtimes = TRUE)
   #seq(randomts$Time[1], randomts$Time[1])
   # 5536 large rining before event
+  randomSeed <- sample(1:10000, 1)
+  set.seed(randomSeed)
+
+  randomts <- StevesCoolRandomTS(maxFlow = 400, obs = 800, maxNoise = 400, smoothed = TRUE, randomtimes = TRUE, eventmagnitude = 0.25)
 
 
-  randomts <- randomts %>% mutate(TidedSignal = Signal + Noise)
+  randomts <- randomts %>% mutate(TidedSignal = Signal + Noise + TideInteraction)
   plot(randomts$Time, randomts$TidedSignal)
 
   randomtsHrly <- randomts %>% dplyr::select(Time, TidedSignal) %>% changeInterval(Interval = "Hourly", option = "inst")
@@ -56,8 +60,17 @@ if(FALSE)
 
   print(randomSeed)
 
+  cbind(
+  xts(randomts$Signal, randomts$Time),
+  xts(randomts$TidedSignal, randomts$Time),
+  xts(randomtsHrly$bwf, randomtsHrly$Date),
+  xts(randomtsHrly$cci, randomtsHrly$Date)
+  ) %>% dygraph
+
+  #####################################
+  #
   # Multiple random trials
-  reps <- 1000
+  reps <- 10000
   #bwfpvalues <- rep(0, reps)
   #ccipvalues <- rep(0, reps)
   pvalues <- list()
@@ -179,7 +192,8 @@ if(FALSE)
     ) %>% melt(id.var= "trial") %>%
       mutate( TideRatio = maxsignal/maxnoise) %>%
       rename( "pvalue" = value) %>%
-      mutate( d1d2Ratio = randomts$d1d2ratio[1])
+      mutate( d1d2Ratio = randomts$d1d2ratio[1]) %>%
+      mutate( magnitude = randomts$eventmagnitude[1])
 
     ###################################################
     #print( paste( "BWF:", bwfpvalues[i] ) )
@@ -187,7 +201,8 @@ if(FALSE)
 
     rawvalues[[i]] <- leveneData %>% mutate( trial = i ) %>%
       mutate( TideRatio = maxsignal/maxnoise) %>%
-      mutate( d1d2Ratio = randomts$d1d2ratio[1])
+      mutate( d1d2Ratio = randomts$d1d2ratio[1]) %>%
+      mutate( magnitude = randomts$eventmagnitude[1])
 
     print(randomSeed)
   }
@@ -195,6 +210,7 @@ if(FALSE)
 
   #savedpvalues
   #pvalues <- pvaluessaved
+  #rawvaluessaved <- rawvalues
 
   pvalues <- pvalues %>% bind_rows
 
@@ -205,11 +221,26 @@ if(FALSE)
   bin_labels <- c("0.001-0.0032", "0.0032-0.01", "0.01-0.032", "0.032-0.1",
                   "0.1-0.32", "0.32-1", "1-3.2", "3.2-10", "10-32", "32-100", ">100")
 
+  d1d2bin_breaks <- c(0.0, 0.5, 0.7, 0.8, 0.85, 0.9, 0.95, 0.99, 1.01, 1.05, 1.1, 1.25, 1.5, 2, Inf)
+  d1d2_labels <- c("0-0.5", "0.5-0.7", "0.7-0.8", "0.8-0.85", "0.85-0.9",
+                   "0.9-0.95", "0.95-0.99", "0.99-1.01", "1.01-1.05",
+                   "1.05-1.1", "1.1-1.25", "1.25-1.5", "1.5-2", ">2")
+
+  # Define custom breaks based on a normal distribution centered around 0.5
+  magnitude_breaks <- c(0, 0.05, 0.15, 0.25, 0.35, 0.45, 0.55, 0.65, 0.75, 0.85, 0.95, 1)
+
+  # Define corresponding labels for the custom breaks
+  magnitude_labels <- c("0-0.05", "0.05-0.15", "0.15-0.25", "0.25-0.35", "0.35-0.45",
+                     "0.45-0.55", "0.55-0.65", "0.65-0.75", "0.75-0.85", "0.85-0.95", "0.95-1")
+
+
   pvalues <- pvalues %>%
-    mutate(TideRatioBin = cut(TideRatio, breaks = bin_breaks, labels = bin_labels, include.lowest = TRUE, right = FALSE))
+    mutate(TideRatioBin = cut(TideRatio, breaks = bin_breaks, labels = bin_labels, include.lowest = TRUE, right = FALSE)) %>%
+    mutate(d1d2Bin = cut(d1d2Ratio , breaks = d1d2bin_breaks, labels = d1d2_labels, include.lowest = TRUE, right = FALSE)) %>%
+    mutate(magnitudeBin = cut(magnitude, breaks = magnitude_breaks, labels = magnitude_labels, include.lowest = TRUE, right = FALSE))
 
   # Compute percentage of TRUE values per bin and filter type
-  result <- pvalues %>%
+  result1 <- pvalues %>%
     group_by(TideRatioBin, variable) %>%
     summarise(
       Count_True = sum(Significant),
@@ -218,7 +249,24 @@ if(FALSE)
       .groups = 'drop'
     )
 
-  result %>% na.omit %>%
+  result2 <- pvalues %>%
+    group_by(d1d2Bin, variable) %>%
+    summarise(
+      Count_True = sum(Significant),
+      Total = n(),
+      Percentage = (Count_True / Total) * 100,
+      .groups = 'drop'
+    )
+  result3 <- pvalues %>%
+    group_by(magnitudeBin, variable) %>%
+    summarise(
+      Count_True = sum(Significant),
+      Total = n(),
+      Percentage = (Count_True / Total) * 100,
+      .groups = 'drop'
+    )
+
+  result1 %>% na.omit %>%
   # Plot results with rotated count labels
   ggplot(aes(x = TideRatioBin, y = Percentage, fill = variable)) +
     geom_bar(stat = "identity", position = "dodge") +
@@ -227,10 +275,40 @@ if(FALSE)
               vjust = 0.5, hjust = -0.2,  # Adjust text positioning
               angle = 90, size = 4) +  # Rotate text 90 degrees
     #scale_y_continuous(labels = scales::percent_format(scale = 1)) +  # Format as percentages
-    labs(title = "Percentage of Significant Results by Tide Ratio", x = "Tide Ratio", y = "Percent Significant (%)", fill = "Filter") +
+    labs(title = "Percentage of Significant Results by Event/Tide Ratio", x = "Event/Tide Ratio", y = "Percent Significant (%)", fill = "Filter") +
     theme_minimal() +
     theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
     ylim (c(0,100))
+    coord_cartesian(clip = 'off')  # Prevent clipping of labels
+
+  result2 %>% na.omit %>%
+      # Plot results with rotated count labels
+      ggplot(aes(x = d1d2Bin, y = Percentage, fill = variable)) +
+      geom_bar(stat = "identity", position = "dodge") +
+      geom_text(aes(label = paste0("n=", Total)),
+                position = position_dodge(width = 0.9),
+                vjust = 0.5, hjust = -0.2,  # Adjust text positioning
+                angle = 90, size = 4) +  # Rotate text 90 degrees
+      #scale_y_continuous(labels = scales::percent_format(scale = 1)) +  # Format as percentages
+      labs(title = "Percentage of Significant Results by d1d2 Ratio", x = "d1d2 Ratio", y = "Percent Significant (%)", fill = "Filter") +
+      theme_minimal() +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+      ylim (c(0,100))
+    coord_cartesian(clip = 'off')  # Prevent clipping of labels
+
+  result3 %>% na.omit %>%
+      # Plot results with rotated count labels
+      ggplot(aes(x = magnitudeBin, y = Percentage, fill = variable)) +
+      geom_bar(stat = "identity", position = "dodge") +
+      geom_text(aes(label = paste0("n=", Total)),
+                position = position_dodge(width = 0.9),
+                vjust = 0.5, hjust = -0.2,  # Adjust text positioning
+                angle = 90, size = 4) +  # Rotate text 90 degrees
+      #scale_y_continuous(labels = scales::percent_format(scale = 1)) +  # Format as percentages
+      labs(title = "Percentage of Significant Results by EventMagnitude", x = "EventMagnitude", y = "Percent Significant (%)", fill = "Filter") +
+      theme_minimal() +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+      ylim (c(0,100))
     coord_cartesian(clip = 'off')  # Prevent clipping of labels
 
   #pvaluessaved <- pvalues
@@ -260,34 +338,67 @@ if(FALSE)
     geom_line()
 
 
-
   rawvalues <- rawvalues %>% bind_rows
 
-
-  rawvalues <- melt(rawvalues, id.vars = c('actual', 'group', 'trial', 'TideRatio','d1d2Ratio' ))
+  rawvalues <- melt(rawvalues, id.vars = c('actual', 'group', 'trial', 'TideRatio','d1d2Ratio', 'magnitude' ))
   rawvalues$error <- rawvalues$value - rawvalues$actual
 
+  rawvalues$variable
 
-  anova_model <- aov(error ~ group*TideRatio*d1d2Ratio*variable, data = rawvalues)
+  #sample_n(rawvalues, 10000)
+  anova_model <- aov(error ~ group * variable * magnitude * TideRatio * d1d2Ratio, data = rawvalues)
   summary(anova_model)
 
-  lm_model <- lm(error ~ group * TideRatio * d1d2Ratio * variable, data = rawvalues)
-  summary(lm_model)
+  anova_model <- aov(actual ~ value * group * variable * magnitude * TideRatio * d1d2Ratio, data = rawvalues)
+  summary(anova_model)
 
+  lm_cci_interactions <- lm(abs(error) ~ value + magnitude * log(TideRatio) * log(d1d2Ratio),
+                 data = rawvalues %>% dplyr::filter(group == "withInteractions" & variable == "cci"))
+  lm_cci_nointeractions <- lm(abs(error) ~ value + magnitude * log(TideRatio) * log(d1d2Ratio),
+                            data = rawvalues %>% dplyr::filter(group == "noInteractions" & variable == "cci"))
+  lm_bwf_interactions <- lm(abs(error) ~ value + magnitude * log(TideRatio) * log(d1d2Ratio),
+                            data = rawvalues %>% dplyr::filter(group == "withInteractions" & variable == "bwf"))
+  lm_bwf_nointeractions <- lm(abs(error) ~ value + magnitude * log(TideRatio) * log(d1d2Ratio),
+                            data = rawvalues %>% dplyr::filter(group == "noInteractions" & variable == "bwf"))
 
+  summary(lm_cci_interactions)
+  summary(lm_bwf_interactions)
+  summary(lm_cci_nointeractions)
+  summary(lm_bwf_nointeractions)
+
+  lm_cci_interactions$
+
+  # Sample and transform
+  plotdata <- rawvalues %>%
+    sample_n(10000) %>%
+    mutate(
+      log_TideRatio = log(TideRatio),
+      log_d1d2Ratio = log(d1d2Ratio)
+    ) %>%
+    pivot_longer(
+      cols = c(magnitude, log_TideRatio, log_d1d2Ratio),
+      names_to = "x_var",
+      values_to = "x_value"
+    )
+
+  # Plot with facet grid and free x scales
+  ggplot(plotdata, aes(x = x_value, y = abs(error), color = variable)) +
+    geom_smooth(method = "loess", se = FALSE) +
+    facet_grid(rows = vars(x_var), cols = vars(variable), scales = "free_x") +
+    labs(
+      title = "Absolute Error vs Predictor Variables by Filtering Method",
+      x = "Predictor Value",
+      y = "Absolute Error"
+    )
   # Check assumptions: Normality of residuals
-  shapiro.test(residuals(anova_model))  # Should not be significant (p > 0.05)
+  #shapiro.test(residuals(anova_model))  # Should not be significant (p > 0.05)
 
   # Check assumptions: Homogeneity of variance
   leveneTest(error ~ group * variable, data = rawvalues)  # p > 0.05 means equal variance
 
   # Perform Tukey's HSD test for pairwise comparisons
-  tukey_result <- TukeyHSD(anova_model)
-  print(tukey_result)
-
-  # Plot Tukey results
-  plot(tukey_result)
-
+  #tukey_result <- TukeyHSD(anova_model)
+  #print(tukey_result)
 
 
   ###############################################
@@ -297,7 +408,7 @@ if(FALSE)
   # 62304 becomes worse at peak
   # randomSeed <- 20852 is a great example, even though the cci variance is changed
   #########
-  randomSeed <- 42412 # majorly missed peak, accentuated rining at beginning of event
+  randomSeed <- 875 # majorly missed peak, accentuated rining at beginning of event
   #########         strong trend in balnd-altman
   randomSeed <- sample(1:1000, 1)
   #randomSeed <- as.integer((as.numeric(Sys.time()) * 1000) %% 100) * randomSeed
@@ -309,7 +420,17 @@ if(FALSE)
   #set.seed(1103)
   #set.seed(randomSeed)
 
-  randomts <- StevesCoolRandomTS(maxFlow = 1280, obs = 4000, maxNoise = 400, smoothed = TRUE, randomtimes = TRUE, tideInteractions = TRUE)
+  # this biases towards bwf being hte worst it could possibly be
+  # event/tide ratio of 2 (800 flow, 400 noise)
+  # d1/d2 ratio of 1 (not significant, just middle ground)
+  # event magnitude of 0.9 i.e. 90% of maximum dampening of event/tide interaction
+  #randomts <- StevesCoolRandomTS(maxFlow = 800, obs = 400, maxNoise = 400, smoothed = TRUE, randomtimes = TRUE, tideInteractions = TRUE,  d1d2ratio = c(1,1), eventmagnitude = 0.9)
+
+  # this biases towards cci being the worst it could possibly be
+  # event/tide ratio of 0.2 (80 flow, 400 noise)
+  # d1/d2 ratio of 1 (not significant, just middle ground)
+  # event magnitude of 0.9 i.e. 90% of maximum dampening of event/tide interaction
+  randomts <- StevesCoolRandomTS(maxFlow = 80, obs = 400, maxNoise = 400, smoothed = TRUE, randomtimes = TRUE, tideInteractions = TRUE,  d1d2ratio = c(0.95,1), eventmagnitude = 0.7)
   #randomts <- StevesCoolRandomTS(maxFlow = 400, obs = 400, maxNoise = 400, smoothed = TRUE, randomtimes = TRUE, tideInteractions = FALSE)
   #randomts <- StevesCoolRandomTS(obs = 500, smoothed = TRUE, randomtimes = TRUE, tideInteractions = FALSE)
 
@@ -323,12 +444,16 @@ if(FALSE)
   randomtsHrly$cci <- approx(cci$Date, cci$avg, randomtsHrly$Date)$y
   randomtsHrly$godin <- godinFilter(randomtsHrly$Inst)
 
+  #randomtsHrly$Signal <- approx(randomts$Time, randomts$Signal, randomtsHrly$Date)$y
+
   plotdata <- randomtsHrly %>% dplyr::select(-Inst) %>%
-    melt(id.vars = "Date") %>%
+    melt(id.vars = c("Date")) %>%
     na.omit %>% bind_rows(
       randomts %>% dplyr::select(c(Time, Signal, TidedSignal)) %>%
         rename("Date" = "Time") %>% melt(id.vars = "Date")
     ) %>% bind_cols(RiverTide = "No Interaction")
+
+
 
 
   # small dataframe for calculating residuals (differnce of filtered data to acutal)
@@ -356,16 +481,21 @@ if(FALSE)
   randomtsHrly$cci <- approx(cci$Date, cci$avg, randomtsHrly$Date)$y
   randomtsHrly$godin <- godinFilter(randomtsHrly$Inst)
 
+  #randomtsHrly$Signal <- approx(randomts$Time, randomts$Signal, randomtsHrly$Date)$y
+
 
   plotdata <- bind_rows(plotdata,
                         randomtsHrly %>% dplyr::select(-Inst) %>%
-                          melt(id.vars = "Date") %>%
-                          na.omit %>% bind_rows(
+                          melt(id.vars = c("Date")) %>%
+                          na.omit %>%
+
+                          bind_rows(
                             randomts %>% dplyr::select(c(Time, Signal, TidedSignal)) %>%
                               rename("Date" = "Time") %>% melt(id.vars = "Date")
                           ) %>% bind_cols(RiverTide = "River/Tide Interaction"))
 
 
+  #View(plotdata)
 
   # small dataframe for calculating residuals (differnce of filtered data to acutal)
   withTideInteractions <- data.frame(
@@ -373,8 +503,8 @@ if(FALSE)
     bwf = approx(bwf$Date, bwf$Filtered, cci$Date)$y,
     cci = cci$avg)
 
-  xts(withTideInteractions, cci$Date) %>% dygraph
-  xts(noTideInteractions, cci$Date) %>% dygraph
+  #xts(withTideInteractions, cci$Date) %>% dygraph
+  #xts(noTideInteractions, cci$Date) %>% dygraph
 
 
 
@@ -420,9 +550,11 @@ if(FALSE)
 
   res1bwf <- withTideInteractions$bwf - withTideInteractions$actual
   res2bwf <- noTideInteractions$bwf - noTideInteractions$actual
+
   df <- data.frame( residual_diff = res1bwf - res2bwf,
                     mean_residuals = ( res1bwf + res1bwf ) / 2 ,
-                    Filter = "Butterworth")
+                    Filter = "Butterworth",
+                    Actual = withTideInteractions$actual)
   #######################################
   # ccInterp
   #############################
@@ -431,7 +563,8 @@ if(FALSE)
   df <- bind_rows(df,
                   data.frame(residual_diff = res1cci - res2cci,
                              mean_residuals = ( res1cci + res2cci ) / 2,
-                             Filter = "ccInterp"))
+                             Filter = "ccInterp",
+                             Actual = withTideInteractions$actual))
 
   # dataset for levene test
 
@@ -452,12 +585,12 @@ if(FALSE)
 
   modelinteractions <- lm(actual ~ value, data = melt(withTideInteractions, id.var = "actual"))
   leveneBetweenFilters <- leveneTest(abs(residuals(modelinteractions)) ~ variable, data =  melt(withTideInteractions, id.var = "actual"))
-  betweenvalues[i] <- leveneBetweenFilters$`Pr(>F)`[1]
+  #betweenvalues[i] <- leveneBetweenFilters$`Pr(>F)`[1]
 
   #betweenvaluesNoInt
   modelinteractions <- lm(actual ~ value, data = melt(noTideInteractions, id.var = "actual"))
   leveneBetweenFilters <- leveneTest(abs(residuals(modelinteractions)) ~ variable, data =  melt(noTideInteractions, id.var = "actual"))
-  betweenvaluesNoInt[i] <- leveneBetweenFilters$`Pr(>F)`[1]
+  #betweenvaluesNoInt[i] <- leveneBetweenFilters$`Pr(>F)`[1]
 
 
   ###################################################
@@ -495,6 +628,12 @@ if(FALSE)
     scale_size_manual(values = size_mapping) +
     theme_minimal()
   comparetraces
+
+  library(tidyr)
+  plotdata_wide <- plotdata %>%
+    pivot_wider(names_from = variable, values_from = value)
+  #View(plotdata_wide)
+
   #######################################################
   #######################################################
 
@@ -523,8 +662,8 @@ if(FALSE)
   df <- merge(df, data_summary, by = "Filter")
 
   # Create Bland-Altman plot with facets
-  blandaltman <- ggplot(df, aes(x = mean_residuals, y = residual_diff)) +
-    geom_point(color = "blue") +  # Scatter plot points
+  blandaltman <- ggplot(df, aes(x = mean_residuals, y = residual_diff, color = Actual)) +
+    geom_point() +  # Scatter plot points
     geom_hline(aes(yintercept = mean_diff), color = "red", linetype = "solid", size = 1) +  # Mean difference
     geom_hline(aes(yintercept = lower_limit), color = "red", linetype = "dashed", size = 1) +  # -1.96 SD
     geom_hline(aes(yintercept = upper_limit), color = "red", linetype = "dashed", size = 1) +  # +1.96 SD
@@ -537,12 +676,15 @@ if(FALSE)
                                        label = paste("p =", signif(p_value, 3))),
               hjust = 0, vjust = 1.5, fontface = "bold", inherit.aes = FALSE)
 
+  blandaltman
 
-  library(patchwork)
-  comparetraces /
+
+library(patchwork)
+comparetraces /
     blandaltman + theme_minimal()
 
-
+ratiohalf /
+ratiodouble
 
 
   print(randomSeed)
@@ -551,34 +693,6 @@ if(FALSE)
   ##########################################
   # End of Bland-Altman Plots
   #######################################
-
-  # DICKEY FULLER TEST
-  install.packages("tseries")
-  library(tseries)
-
-  # Example: Generate an AR(1) time series
-  set.seed(123)
-  y <- arima.sim(model = list(ar = 0.7), n = 100)
-  plot(y)
-
-  # Perform ADF test
-  adf_result <- adf.test(y)
-
-  # View results
-  print(adf_result)
-  ?adf.test
-
-  set.seed(1)
-  noint <- StevesCoolRandomTS(tideInteractions = FALSE)
-  set.seed(1)
-  withint <- StevesCoolRandomTS(tideInteractions = TRUE)
-
-
-
-  adf.test(noint$Signal)
-  plot(noint$Signal)
-  adf.test(withint$Signal+withint$Noise)
-
 
   #####################################
   # Response functions
@@ -591,15 +705,44 @@ if(FALSE)
   print(randomSeed)
 
 
+  #########
+  randomSeed <- 875 # majorly missed peak, accentuated rining at beginning of event
+  #########         strong trend in balnd-altman
+  randomSeed <- sample(1:1000, 1)
+  #randomSeed <- as.integer((as.numeric(Sys.time()) * 1000) %% 100) * randomSeed
+
+  set.seed(randomSeed)
+  print(randomSeed)
+
+  par(mfrow=c(1,2))
+  #set.seed(1103)
+  #set.seed(randomSeed)
+
+  # this biases towards bwf being hte worst it could possibly be
+  # event/tide ratio of 2 (800 flow, 400 noise)
+  # d1/d2 ratio of 1 (not significant, just middle ground)
+  # event magnitude of 0.9 i.e. 90% of maximum dampening of event/tide interaction
+  #randomts <- StevesCoolRandomTS(maxFlow = 800, obs = 10000, maxNoise = 400, smoothed = TRUE, randomtimes = TRUE, tideInteractions = TRUE,  d1d2ratio = c(1,1), eventmagnitude = 0.9)
+
+  # this biases towards cci being the worst it could possibly be
+  # event/tide ratio of 0.2 (80 flow, 400 noise)
+  # d1/d2 ratio of 1 (not significant, just middle ground)
+  # event magnitude of 0.9 i.e. 90% of maximum dampening of event/tide interaction
+  randomts <- StevesCoolRandomTS(maxFlow = 80, obs = 10000, maxNoise = 400, smoothed = TRUE, randomtimes = TRUE, tideInteractions = TRUE,  d1d2ratio = c(0.95,1), eventmagnitude = 0.7)
+  #randomts <- StevesCoolRandomTS(maxFlow = 400, obs = 400, maxNoise = 400, smoothed = TRUE, randomtimes = TRUE, tideInteractions = FALSE)
+  #randomts <- StevesCoolRandomTS(obs = 500, smoothed = TRUE, randomtimes = TRUE, tideInteractions = FALSE)
+
+
+
 
   #randomSeed <- 959
   #randomSeed <- 1103
-  set.seed(randomSeed)
+  #set.seed(randomSeed)
 
 
-  randomts <- StevesCoolRandomTS(maxFlow = 1000, obs = 10000, maxNoise = 200, smoothed = TRUE, randomtimes = TRUE, tideInteractions = TRUE)
+  #randomts <- StevesCoolRandomTS(maxFlow = 1000, obs = 10000, maxNoise = 200, smoothed = TRUE, randomtimes = TRUE, tideInteractions = TRUE)
 
-  xts(randomts$Signal+randomts$Noise, randomts$Time) %>% dygraph
+  xts(randomts$Signal+randomts$Noise+randomts$TideInteraction, randomts$Time) %>% dygraph
 
   plot(randomts$Time, randomts$Signal)
 
@@ -847,6 +990,16 @@ if(FALSE)
   melt(cciConfi[(maxvalue-500):(maxvalue+500),], id.vars = "Date") %>% ggplot(aes(x = Date, y = value, colour = variable)) +
     geom_line()
 
+
+
+
+
+
+
+
+
+
+  ##############################################################
 
   ######################
   ################################

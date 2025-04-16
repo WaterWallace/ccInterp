@@ -4,7 +4,7 @@
 \alias{cciDespike}
 \title{cci Despkie}
 \usage{
-cciDespike(spiky, hoursAvg = 3, stdevs = 3, doPlot = FALSE)
+cciDespike(spiky, hoursAvg = 3, stdevs = 2, doPlot = FALSE)
 }
 \arguments{
 \item{spiky}{dataframe of posixct time (time in seconds) and an instantaneous value (per second i.e. cumecs)}
@@ -22,9 +22,7 @@ dataframe with timestamp as posixct, and despiked timeseries data
 Cuts timeseries data outside 2 standard deviations from the 3 hour ccinterp filtered data
 }
 \details{
-Useful for detiding or denoising of data
-The overlapping averaging windows allow multiple recalculations of the same data
-Which provides an estimate of the uncertainty in applying the filter
+Worth experimenting with the number of standard deviations and averaging window for the particular dataset
 }
 \examples{
 data(xy_data)
@@ -41,4 +39,19 @@ plot(D, col="red", pch=16)
 # despike
 despikedD <- cciDespike(D)
 points(despikedD, col="black", pch=16)
+
+spiky <- StevesCoolRandomTS()
+spiky <- spiky \%>\% mutate(Tided = Signal+Noise+TideInteraction) \%>\%
+dplyr::select(Time, Tided)
+dfoutliers <- sample_n(spiky, 20) \%>\%
+  mutate( Tided = rnorm(20, 0, 200) )
+
+spiky <- spiky \%>\%
+left_join(dfoutliers, by = "Time", suffix = c("", "_new")) \%>\%
+mutate(Tided = dplyr::coalesce(Tided_new, Tided)) \%>\%
+dplyr::select(Time, Tided)
+
+cciDespike(spiky, doPlot = TRUE, stdevs = 2)
+points(dfoutliers, col = "blue", pch = 4)
+
 }

@@ -25,7 +25,7 @@
 #'  lines(rough$Time, rough$Signal+rough$Noise, col='red')
 #'
 #' @export
-StevesCoolRandomTS <- function(maxFlow=1000*runif(1), maxNoise=500*runif(1), obs=1000, smoothed=TRUE, randomtimes = FALSE, tideInteractions = TRUE)
+StevesCoolRandomTS <- function(maxFlow=500*runif(1), maxNoise=500*runif(1), obs=1000, smoothed=TRUE, randomtimes = FALSE, tideInteractions = TRUE, d1d2ratio = NULL, eventmagnitude = NULL)
 {
 
   end <- Sys.Date() - obs/24
@@ -73,8 +73,12 @@ StevesCoolRandomTS <- function(maxFlow=1000*runif(1), maxNoise=500*runif(1), obs
   annualmoon <- 5*sin( ( 1/364 ) * 2*pi * t)
   monthly <- sin( ( 1/29.53 ) * 2*pi * t)  # monthly cycle is 29.5
 
-
-  bias <- rnorm(2,1,0.16)
+  if(is.null(d1d2ratio) | length(d1d2ratio) != 2)
+  {
+    bias <- rnorm(2,1,0.16)
+  }else{
+    bias <- d1d2ratio
+  }
   ratio <- bias[1]/bias[2]
   print(ratio)
 
@@ -87,9 +91,8 @@ StevesCoolRandomTS <- function(maxFlow=1000*runif(1), maxNoise=500*runif(1), obs
 
   noiseratio <- max(df$Noise) / maxNoise
 
-  df$Signal <- df$Signal + ( annual + abs(min(annual) ))
+  df$Signal <- df$Signal + ( annualsun + abs(min(annualsun) )) # add some annual bias
   df$Signal <- round( df$Signal / (max(abs(df$Signal)) / maxFlow) , 3 )
-
 
   if(tideInteractions)
   {
@@ -97,6 +100,14 @@ StevesCoolRandomTS <- function(maxFlow=1000*runif(1), maxNoise=500*runif(1), obs
     # dampen tide during events
     df <- df %>% mutate(signalratio = Signal / ( max(df$Signal) - min(df$Signal) ) ) %>%
       mutate(signalratio = signalratio - min(signalratio))
+
+    if(is.null(eventmagnitude))
+    {
+      # Generate 1000 random numbers from a normal distribution with mean 0.5 and sd 0.15
+      eventmagnitude <- rnorm(1, mean = 0.5, sd = 0.15)
+      # Clip values to ensure they are between 0 and 1
+      eventmagnitude <- pmin(pmax(eventmagnitude, 0), 1)
+    }
 
     df <- df %>% mutate(TideInteraction = ( Noise * ( 1 - signalratio ) ) - Noise ) # new noise minus noise
 
@@ -109,10 +120,11 @@ StevesCoolRandomTS <- function(maxFlow=1000*runif(1), maxNoise=500*runif(1), obs
     laggednoise <- approx(laggedts$Time, (laggedts$Noise+laggedts$TideInteraction), df$Time, rule = 2)$y
     laggdiff <- laggednoise - (df$Noise+df$TideInteraction)
 
-    df$TideInteraction <- (df$TideInteraction + laggdiff) %>% round(3)
+    df$TideInteraction <- eventmagnitude * df$signalratio * ( df$TideInteraction + laggdiff ) %>% round(3)
 
     df <- df %>% dplyr::select(-signalratio)
     df$TideInteraction <- df$TideInteraction / noiseratio
+    df$eventmagnitude <- eventmagnitude
 
   }
 
@@ -131,54 +143,6 @@ StevesCoolRandomTS <- function(maxFlow=1000*runif(1), maxNoise=500*runif(1), obs
   return(df)
 
 }
-
-df <- StevesCoolRandomTS()
-head(df)
-plot(df$Time, df$Noise)
-xts(df$Noise+df$Signal+df$TideInteraction, df$Time) %>% dygraph
-#xts(df$Signal, df$Time) %>% dygraph
-
-
-library(Rlibeemd)
-
-#imfs <- ceemdan(df$Noise)
-
-
-
-
-# Sample time series (e.g., tidal or lunar cycle data)
-#set.seed(123)
-#t <- seq(0, 10, by = 0.1)  # Time vector
-#y <- 5*sin(2 * pi * 1.93 * t) + 2*sin(2 * pi * 0.5 * t) + rnorm(length(t), sd = 0.5)  # Simulated data
-y <- df$Noise
-
-
-# Compute FFT
-fft_result <- fft(y)
-n <- length(y)
-freqs <- seq(0, 1, length.out = n) * (1 / (t[2] - t[1]))  # Convert indices to frequencies
-
-# Get amplitudes (magnitude of complex FFT values)
-amplitudes <- Mod(fft_result) / n  # Normalize
-
-# Only take the first half (positive frequencies)
-half_n <- floor(n / 2)
-freqs <- freqs[1:half_n]
-amplitudes <- amplitudes[1:half_n]
-
-# Plot spectrum
-plot(freqs, amplitudes, type = "h", col = "blue", lwd = 2,
-     xlab = "Frequency (cycles per unit time)", ylab = "Amplitude",
-     main = "Frequency Spectrum of Time Series")
-
-library(signal)  # Install if necessary: install.packages("signal")
-library(pracma)
-peaks <- findpeaks(amplitudes, nups = 1, ndowns = 1, npeaks = 5, sortstr = TRUE)
-dominant_freqs <- freqs[peaks[,2]]
-dominant_amplitudes <- peaks[,1]
-
-# Print results
-data.frame(Frequency = dominant_freqs, Amplitude = dominant_amplitudes)
 
 
 

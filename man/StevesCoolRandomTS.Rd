@@ -7,9 +7,12 @@
 StevesCoolRandomTS(
   maxFlow = 500 * runif(1),
   maxNoise = 500 * runif(1),
-  obs = 10000,
+  obs = 1000,
   smoothed = TRUE,
-  randomtimes = FALSE
+  randomtimes = FALSE,
+  tideInteractions = TRUE,
+  d1d2ratio = NULL,
+  eventmagnitude = NULL
 )
 }
 \arguments{
