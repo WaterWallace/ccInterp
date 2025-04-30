@@ -70,9 +70,9 @@ StevesCoolRandomTS <- function(maxFlow=500*runif(1), maxNoise=500*runif(1), obs=
 
   # sun/moon interactions
   randomannualtime <- runif(1,0,1) * 365
-  annualsun <- 1*sin( ( 1/365.25 ) * 2 * pi *  t + randomannualtime ) + 1
+  annualsun <- sin( ( 1/365.25 ) * 2 * pi *  t + randomannualtime ) + 1 # >0
   randomannualtime <- runif(1,0,1) * 365
-  annualmoon <- 1*sin( ( 1/182 ) * 2 * pi *  t + randomannualtime  ) + 1
+  annualmoon <- sin( ( 1/364 ) * 2 * pi *  t + randomannualtime  )
   randomannualtime <- runif(1,0,1) * 365
   monthly <- sin( ( 1/29.53 ) * 2*pi * t + randomannualtime )  # monthly cycle is 29.5
 
@@ -146,3 +146,6 @@ StevesCoolRandomTS <- function(maxFlow=500*runif(1), maxNoise=500*runif(1), obs=
   return(df)
 
 }
+
+
+
