@@ -24,13 +24,14 @@ if(FALSE)
 
   # 5698 rapid rises causes ringing at the beginning of an event.
   # 5905 rapid rises causes ringing at the beginning of an event. # good one
+  # 4777 cci is perfect, too much ringing in bwf
   randomts <- StevesCoolRandomTS(maxFlow = 200, obs = 200, maxNoise = 200, smoothed = FALSE, randomtimes = TRUE)
   #seq(randomts$Time[1], randomts$Time[1])
   # 5536 large rining before event
   randomSeed <- sample(1:10000, 1)
   set.seed(randomSeed)
 
-  randomts <- StevesCoolRandomTS(maxFlow = 400, obs = 800, maxNoise = 400, smoothed = TRUE, randomtimes = TRUE, eventmagnitude = 0.25)
+  randomts <- StevesCoolRandomTS(maxFlow = 400, obs = 800, maxNoise = 400, smoothed = TRUE, randomtimes = TRUE, eventmagnitude = 0.9)
 
 
   randomts <- randomts %>% mutate(TidedSignal = Signal + Noise + TideInteraction)
@@ -50,9 +51,9 @@ if(FALSE)
   randomtsHrly$godin <- godinFilter(randomtsHrly$Inst)
 
   plot(TidedSignal ~ Time, data = randomts, type = "l", ylab = "Discharge", col = "grey")
-  points(cci ~ Date, data = randomtsHrly, col = "blue", pch = 4, cex = 1)
-  points(bwf ~ Date, data = randomtsHrly, col = "orange", pch = 3, cex = 1)
-  points(godin ~ Date, data = randomtsHrly, col = "darkgreen", cex = 1)
+  lines(cci ~ Date, data = randomtsHrly, col = "blue", pch = 4, cex = 1)
+  lines(bwf ~ Date, data = randomtsHrly, col = "orange", pch = 3, cex = 1)
+  lines(godin ~ Date, data = randomtsHrly, col = "darkgreen", cex = 1)
   lines(Signal ~ Time, data = randomts, col = "grey15", cex = 1)
 
   legend("topleft", legend = c("Unfiltered", "Input Signal", "cci","bwf","godin"),
@@ -70,7 +71,7 @@ if(FALSE)
   #####################################
   #
   # Multiple random trials
-  reps <- 10000
+  reps <- 100
   #bwfpvalues <- rep(0, reps)
   #ccipvalues <- rep(0, reps)
   pvalues <- list()
@@ -311,6 +312,9 @@ if(FALSE)
       ylim (c(0,100))
     coord_cartesian(clip = 'off')  # Prevent clipping of labels
 
+
+
+
   #pvaluessaved <- pvalues
   bwfpvalues <- pvalues[pvalues$variable == "Butterworth",]$pvalue
   ccipvalues <- pvalues[pvalues$variable == "ccInterp",]$pvalue
@@ -343,14 +347,17 @@ if(FALSE)
   rawvalues <- melt(rawvalues, id.vars = c('actual', 'group', 'trial', 'TideRatio','d1d2Ratio', 'magnitude' ))
   rawvalues$error <- rawvalues$value - rawvalues$actual
 
-  rawvalues$variable
+  ################################
+  # Saved rawvalues rds here
+
+  #rawvalues$variable
 
   #sample_n(rawvalues, 10000)
-  anova_model <- aov(error ~ group * variable * magnitude * TideRatio * d1d2Ratio, data = rawvalues)
-  summary(anova_model)
+  #anova_model <- aov(error ~ group * variable * magnitude * TideRatio * d1d2Ratio, data = rawvalues)
+  #summary(anova_model)
 
-  anova_model <- aov(actual ~ value * group * variable * magnitude * TideRatio * d1d2Ratio, data = rawvalues)
-  summary(anova_model)
+  #anova_model <- aov(actual ~ value * group * variable * magnitude * TideRatio * d1d2Ratio, data = rawvalues)
+  #summary(anova_model)
 
   lm_cci_interactions <- lm(abs(error) ~ value + magnitude * log(TideRatio) * log(d1d2Ratio),
                  data = rawvalues %>% dplyr::filter(group == "withInteractions" & variable == "cci"))
@@ -366,7 +373,7 @@ if(FALSE)
   summary(lm_cci_nointeractions)
   summary(lm_bwf_nointeractions)
 
-  lm_cci_interactions$
+  #lm_cci_interactions$
 
   # Sample and transform
   plotdata <- rawvalues %>%
@@ -408,12 +415,13 @@ if(FALSE)
   # 62304 becomes worse at peak
   # randomSeed <- 20852 is a great example, even though the cci variance is changed
   #########
-  randomSeed <- 875 # majorly missed peak, accentuated rining at beginning of event
   #########         strong trend in balnd-altman
   randomSeed <- sample(1:1000, 1)
   #randomSeed <- as.integer((as.numeric(Sys.time()) * 1000) %% 100) * randomSeed
 
-  set.seed(randomSeed)
+  randomSeed <- 875 # majorly missed peak, accentuated rining at beginning of event
+
+ # set.seed(randomSeed)
   print(randomSeed)
 
   par(mfrow=c(1,2))
@@ -424,13 +432,13 @@ if(FALSE)
   # event/tide ratio of 2 (800 flow, 400 noise)
   # d1/d2 ratio of 1 (not significant, just middle ground)
   # event magnitude of 0.9 i.e. 90% of maximum dampening of event/tide interaction
-  #randomts <- StevesCoolRandomTS(maxFlow = 800, obs = 400, maxNoise = 400, smoothed = TRUE, randomtimes = TRUE, tideInteractions = TRUE,  d1d2ratio = c(1,1), eventmagnitude = 0.9)
+  randomts <- StevesCoolRandomTS(maxFlow = 800, obs = 400, maxNoise = 400, smoothed = TRUE, randomtimes = TRUE, tideInteractions = TRUE,  d1d2ratio = c(1,1), eventmagnitude = 0.9)
 
   # this biases towards cci being the worst it could possibly be
   # event/tide ratio of 0.2 (80 flow, 400 noise)
   # d1/d2 ratio of 1 (not significant, just middle ground)
   # event magnitude of 0.9 i.e. 90% of maximum dampening of event/tide interaction
-  randomts <- StevesCoolRandomTS(maxFlow = 80, obs = 400, maxNoise = 400, smoothed = TRUE, randomtimes = TRUE, tideInteractions = TRUE,  d1d2ratio = c(0.95,1), eventmagnitude = 0.7)
+  #randomts <- StevesCoolRandomTS(maxFlow = 80, obs = 400, maxNoise = 400, smoothed = TRUE, randomtimes = TRUE, tideInteractions = TRUE,  d1d2ratio = c(0.95,1), eventmagnitude = 0.7)
   #randomts <- StevesCoolRandomTS(maxFlow = 400, obs = 400, maxNoise = 400, smoothed = TRUE, randomtimes = TRUE, tideInteractions = FALSE)
   #randomts <- StevesCoolRandomTS(obs = 500, smoothed = TRUE, randomtimes = TRUE, tideInteractions = FALSE)
 
@@ -454,7 +462,8 @@ if(FALSE)
     ) %>% bind_cols(RiverTide = "No Interaction")
 
 
-
+  #plot(value ~  data = plotdata)
+  #unique(plotdata$variable)
 
   # small dataframe for calculating residuals (differnce of filtered data to acutal)
   noTideInteractions <- data.frame(
@@ -508,6 +517,7 @@ if(FALSE)
 
 
 
+
   #################################################
   # simple model residual plots
   #
@@ -528,7 +538,7 @@ if(FALSE)
   godinmodel <- lm(signal ~ godin, data = df)
 
   par(mfrow = c(1,1))
-  plot(resid(bwfmodel) ~ fitted(bwfmodel), ylim = c(-100,100), col = "orange")
+  plot(resid(bwfmodel) ~ fitted(bwfmodel), ylim = c(-100,100), col = "orange", xlab = "Fitted Value")
   points(resid(ccimodel) ~ fitted(ccimodel), col = "blue")
   points(resid(godinmodel) ~ fitted(godinmodel), col = "darkgreen")
 
@@ -683,12 +693,11 @@ library(patchwork)
 comparetraces /
     blandaltman + theme_minimal()
 
-ratiohalf /
-ratiodouble
+
 
 
   print(randomSeed)
-
+#151 is good
 
   ##########################################
   # End of Bland-Altman Plots
@@ -731,6 +740,10 @@ ratiodouble
   randomts <- StevesCoolRandomTS(maxFlow = 80, obs = 10000, maxNoise = 400, smoothed = TRUE, randomtimes = TRUE, tideInteractions = TRUE,  d1d2ratio = c(0.95,1), eventmagnitude = 0.7)
   #randomts <- StevesCoolRandomTS(maxFlow = 400, obs = 400, maxNoise = 400, smoothed = TRUE, randomtimes = TRUE, tideInteractions = FALSE)
   #randomts <- StevesCoolRandomTS(obs = 500, smoothed = TRUE, randomtimes = TRUE, tideInteractions = FALSE)
+  set.seed(randomSeed)
+  print(randomSeed)
+
+  randomts <- StevesCoolRandomTS(maxFlow = 800, obs = 10000, maxNoise = 400, smoothed = TRUE, randomtimes = TRUE, tideInteractions = TRUE,  d1d2ratio = c(0.95,1), eventmagnitude = 0.9)
 
 
 
@@ -866,14 +879,14 @@ ratiodouble
   head(Periodograms)
   library(scales)
   Periodograms %>% ggplot(aes(x = Period, y = Amplitude)) +
-    geom_point()  +
+    geom_point(shape = 1)  +
     scale_x_continuous(trans = "log2", breaks = c(3, 6, 12, 24, 48, 168, 672, 8760),
                        minor_breaks = FALSE) +  # Set appropriate minor breaks
     scale_y_log10(breaks = trans_breaks("log10", function(x) 10^x),
                   labels = trans_format("log10", math_format(10^.x))) +
     theme_minimal() +
     #annotation_logticks() +
-    facet_wrap(vars(Dataset), scales = "free_y")
+    facet_wrap(vars(Dataset))
 
 
   # Interpolate amplitudes to match frequencies and tehn
@@ -950,41 +963,161 @@ ratiodouble
   print(randomSeed)
 
   # skw to here
-
+#############################################################
+  # Plotting the filter process
+  # For appendix
 
   library(data.table)
   library(ggplot2)
-  melt(cci[3000:5000,], id.vars = "Date") %>% ggplot(aes(x = Date, y = value, colour = variable)) +
-    geom_line()
+
+  cci <- ccInterpFilter(data.frame(randomts$Time,  randomts$TidedSignal), type = "spinterp")
 
   maxloc <- which.max(cci$avg)
   cci_subset <- cci[(maxloc-50):(maxloc+50),]
 
-  melt(cci_subset, id.vars = "Date") %>% ggplot(aes(x = Date, y = value, colour = variable)) +
-    geom_line()
+  rawdata <- dplyr::select(randomts, c("Time", "TidedSignal"))
+
+  dailytimestep <- list()
+  hourlytimes <- seq(min(rawdata$Time), max(rawdata$Time), by = 60) %>% round(units = "mins")
+  hourlytimestep <- list()
+  for(hour in 0:23)
+  {
+    daily <- changeInterval(rawdata, offset = 60*hour)
+    dailytimestep[[hour+1]] <- approx(daily$Date, daily$FMean, as.POSIXct(hourlytimes), method = "constant", f= 0, rule = 2) %>% as.data.frame()
+    daily <- daily %>% mutate(tdays = as.numeric(Date) / 60 / 60 / 24)
+    hourlytimestep[[hour+1]] <- spinterpConvert(daily$tdays, daily$FMean) %>%
+      mutate(Date = Date * 60 * 60 * 24) %>%
+      mutate(Date = as.POSIXct(Date)) %>%
+      mutate(Date = round(Date, units = "hours"))
+  }
+
+  dailytimestep
+  hourlytimestep
+
+  names(dailytimestep) <- paste0("Hour", seq_along(dailytimestep)-1)
+  names(hourlytimestep) <- paste0("Hour", seq_along(hourlytimestep)-1)
+
+  library(dplyr)
+  library(purrr)
+    # Build a single df with shared Date and each value column in a new column
+  merged_df <- dailytimestep %>%
+    imap(~ .x %>% rename(!! .y := 2)) %>%  # rename second column to list name
+    reduce(left_join, by = "x")         # join all by Date
+
+  merged_hourly <- hourlytimestep %>%
+    imap(~ .x %>% rename(!! .y := 2)) %>%  # rename second column to list name
+    reduce(left_join, by = "Date")         # join all by Date
+
+
+  rawdata <- dplyr::select(randomts, c("Time", "TidedSignal"))
+  rawdata <- rawdata %>% dplyr::filter(Time > min(cci_subset$Date) & Time < max(cci_subset$Date))
+
+  melted_cci <- melt(cci_subset %>% dplyr::select(-avg), id.vars = "Date")
+
+  merged_df <- merged_df %>% na.omit %>%
+    dplyr::filter(x > min(cci_subset$Date) & x < max(cci_subset$Date)) %>%
+    rename("Date" = "x")
+
+  merged_hourly <- merged_hourly %>% na.omit %>%
+    dplyr::filter(Date > min(cci_subset$Date) & Date < max(cci_subset$Date))
+
+
+  fnplotgraph <- function(df)
+  {
+    df %>% ggplot(aes(x = Date, y = value, colour = variable)) +
+      geom_line() +
+      geom_line(aes(x = Time, y = TidedSignal, colour = "Daily"), data = rawdata) +
+      scale_colour_manual(
+        values = c(
+          setNames(grey.colors(length(unique(melted_cci$variable)), start = 0, end = 0.8),
+                   unique(melted_cci$variable)),
+          "CCI" = "black",
+          "Tided" = "brown" )
+        )+
+      theme_minimal() +
+      labs(colour = "Daily")
+  }
+
+
+  # plot 1
+  merged_df %>% dplyr::select(Date, Hour0) %>% melt(id.vars = "Date") %>% fnplotgraph
+  merged_hourly %>% dplyr::select(Date, Hour0) %>% melt(id.vars = "Date") %>% fnplotgraph
+
+  # plot 2
+  merged_df %>% dplyr::select(Date, Hour0, Hour1) %>% melt(id.vars = "Date") %>% fnplotgraph
+  merged_hourly %>% dplyr::select(Date, Hour0, Hour1) %>% melt(id.vars = "Date") %>% fnplotgraph
+
+  # plot 3
+  merged_df %>% dplyr::select(Date, Hour0, Hour1, Hour2) %>% melt(id.vars = "Date") %>% fnplotgraph
+  merged_hourly %>% dplyr::select(Date, Hour0, Hour1, Hour3) %>% melt(id.vars = "Date") %>% fnplotgraph
+
+  # plot all
+  merged_df %>% melt(id.vars = "Date") %>% fnplotgraph
+  merged_hourly %>% melt(id.vars = "Date") %>% fnplotgraph
+
+
+  # Plot everything including the average
+  melted_cci <- merged_hourly %>%  mutate(Average = rowMeans(across(starts_with("Hour")), na.rm = TRUE)) %>%
+    melt(id.vars = "Date")
+  ggplot(melted_cci, aes(x = Date, y = value, colour = variable)) +
+    geom_line() +
+    geom_line(data = (merged_hourly %>%  mutate(Average = rowMeans(across(starts_with("Hour")), na.rm = TRUE)) %>% dplyr::select(Date,Average)) , aes(x = Date, y = Average, colour = "CCI"), linewidth = 1) +
+    geom_line(aes(x = Time, y = TidedSignal, colour = "Tided"), data = rawdata) +
+    scale_colour_manual(
+      values = c(
+        setNames(grey.colors(length(unique(melted_cci$variable)), start = 0, end = 0.8),
+                 unique(melted_cci$variable)),
+        "CCI" = "black",
+        "Tided" = "brown"
+      )
+    ) +
+    theme_minimal() +
+    labs(colour = "Interpolation")
+
 
   library(matrixStats)
   stdev <- rowSds(as.matrix(cci[2:(length(cci) - 1)]))
 
-  xts(randomts$Signal, randomts$Time) %>% dygraph
+  #xts(randomts$Signal, randomts$Time) %>% dygraph
 
 
   cciConfi <- data.frame(Date = cci$Date, avg = cci$avg,
                          raw = approx(randomts$Time, randomts$TidedSignal, cci$Date)$y,
                          synthetic = approx(randomts$Time, randomts$Signal, cci$Date)$y
   )
-  cciConfi <- cbind(cciConfi, upper_95 = cciConfi$avg + 2*stdev)
-  cciConfi <- cbind(cciConfi, lower_95 = cciConfi$avg - 2*stdev)
+  cciConfi <- cbind(cciConfi, upper_95 = cciConfi$avg + 1*stdev)
+  cciConfi <- cbind(cciConfi, lower_95 = cciConfi$avg - 1*stdev)
+  cciConfi <- cbind(cciConfi, upper_99 = cciConfi$avg + 2*stdev)
+  cciConfi <- cbind(cciConfi, lower_99 = cciConfi$avg - 2*stdev)
 
 
   melt(cciConfi[3000:5000,], id.vars = "Date") %>% ggplot(aes(x = Date, y = value, colour = variable)) +
     geom_line()
 
   maxloc <- which.max(cciConfi$avg)
-  cci_subset <- cciConfi[(maxloc-50):(maxloc+50),]
+  cci_subset <- cciConfi[(maxloc-100):(maxloc+100),]
 
   melt(cci_subset, id.vars = "Date") %>% ggplot(aes(x = Date, y = value, colour = variable)) +
     geom_line()
+
+
+
+  cci_subset %>%
+    ggplot(aes(x = Date)) +
+    geom_ribbon(aes(ymin = lower_99, ymax = upper_99, fill = "2"), alpha = 1) +
+    geom_ribbon(aes(ymin = lower_95, ymax = upper_95, fill = "1"), alpha = 1) +
+    geom_line(aes(y = raw, colour = "Tided"), linewidth = 0.5) +
+    geom_line(aes(y = avg, colour = "CCI"), linewidth = 1) +
+    geom_line(aes(y = synthetic, colour = "Actual"), linewidth = 1) +
+    scale_fill_manual(
+      name = "Standard Deviations",
+      values = c("2" = "grey", "1" = "grey50")
+    ) +
+    scale_colour_manual(
+      name = "Series",
+      values = c("Tided" = "brown", "CCI" = "blue", "Actual" = "black")
+    ) +
+    theme_minimal()
 
   maxvalue <- which.max(cciConfi$raw)
   melt(cciConfi[(maxvalue-500):(maxvalue+500),], id.vars = "Date") %>% ggplot(aes(x = Date, y = value, colour = variable)) +

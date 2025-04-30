@@ -64,14 +64,17 @@ StevesCoolRandomTS <- function(maxFlow=500*runif(1), maxNoise=500*runif(1), obs=
 
   t <- as.numeric( df[,1] ) /60/60/24
   # Sun driven cycle
-  d1 <- 2*sin( 2*pi * t)
+  d1 <- 2*sin( 2*pi *  t + runif(1,0,1) * 365 )
   # Moon driven cycle
-  d2 <- 5*sin( 24/(12+(25/60)) * 2*pi * t) # moon revolves every 12hours 25 minutes.
+  d2 <- 5*sin( 24/(12+(25/60)) * 2*pi *  t + runif(1,0,1) * 28  ) # moon revolves every 12hours 25 minutes.
 
   # sun/moon interactions
-  annualsun <- 5*sin( ( 1/365.25 ) * 2*pi * t+180)
-  annualmoon <- 5*sin( ( 1/364 ) * 2*pi * t)
-  monthly <- sin( ( 1/29.53 ) * 2*pi * t)  # monthly cycle is 29.5
+  randomannualtime <- runif(1,0,1) * 365
+  annualsun <- 1*sin( ( 1/365.25 ) * 2 * pi *  t + randomannualtime ) + 1
+  randomannualtime <- runif(1,0,1) * 365
+  annualmoon <- 1*sin( ( 1/182 ) * 2 * pi *  t + randomannualtime  ) + 1
+  randomannualtime <- runif(1,0,1) * 365
+  monthly <- sin( ( 1/29.53 ) * 2*pi * t + randomannualtime )  # monthly cycle is 29.5
 
   if(is.null(d1d2ratio) | length(d1d2ratio) != 2)
   {
@@ -143,6 +146,3 @@ StevesCoolRandomTS <- function(maxFlow=500*runif(1), maxNoise=500*runif(1), obs=
   return(df)
 
 }
-
-
-
