@@ -36,6 +36,10 @@ StevesCoolRandomTS <- function(maxFlow=500*runif(1), maxNoise=500*runif(1), obs=
   randomMinutes <- randomMinutes[randomMinutes > 10] # exclude intervals less than 10 minutes
   randomMinutes <- as.POSIXct(cumsum(randomMinutes)*60, origin=as.Date(start, origin="1970-01-01"))
 
+  #t <- as.numeric( randomMinutes ) /60/60/24
+  #randomannualtime <- runif(1,0,1) * 365
+  #annualsun <- sin( ( 1/365.25 ) * 2 * pi *  t + randomannualtime ) + 1 # >0
+
   # build a data frame of times and values
   df <- data.frame(Time = randomMinutes,
                    Signal = cumsum(rnorm(length(randomMinutes), mean = 0, sd = 1)) *
@@ -43,9 +47,10 @@ StevesCoolRandomTS <- function(maxFlow=500*runif(1), maxNoise=500*runif(1), obs=
                      cumsum(rnorm(length(randomMinutes), mean = 0, sd = 1))^2
   )
 
+  df$Signal <- ( df$Signal / max(df$Signal) )
 
   df$Signal <- df$Signal * c(0, df$Signal[-nrow(df)])  # autocorrelate
-  df$Signal <- round(df$Signal, digits = 3)
+  df$Signal <- round(df$Signal, digits = 2)
   df$Signal <- df$Signal * c(0, df$Signal[-nrow(df)])
 
   if(smoothed)
@@ -63,16 +68,16 @@ StevesCoolRandomTS <- function(maxFlow=500*runif(1), maxNoise=500*runif(1), obs=
   }
 
   t <- as.numeric( df[,1] ) /60/60/24
-  # Sun driven cycle
-  d1 <- 2*sin( 2*pi *  t + runif(1,0,1) * 365 )
-  # Moon driven cycle
-  d2 <- 5*sin( 24/(12+(25/60)) * 2*pi *  t + runif(1,0,1) * 28  ) # moon revolves every 12hours 25 minutes.
+  # Sun driven cycle  #### S2
+  d1 <- 2 * sin( 2*pi *  t + runif(1,0,1) * 365 )
+  # Moon driven cycle ##### M2
+  d2 <- 5 * sin( 24/(12+(25/60)) * 2*pi *  t + runif(1,0,1) * 28  ) # moon revolves every 12hours 25 minutes.
 
   # sun/moon interactions
   randomannualtime <- runif(1,0,1) * 365
   annualsun <- sin( ( 1/365.25 ) * 2 * pi *  t + randomannualtime ) + 1 # >0
   randomannualtime <- runif(1,0,1) * 365
-  annualmoon <- sin( ( 1/364 ) * 2 * pi *  t + randomannualtime  )
+  annualmoon <- 2 * sin( ( 1/364 ) * 2 * pi *  t + randomannualtime  )
   randomannualtime <- runif(1,0,1) * 365
   monthly <- sin( ( 1/29.53 ) * 2*pi * t + randomannualtime )  # monthly cycle is 29.5
 
@@ -85,16 +90,18 @@ StevesCoolRandomTS <- function(maxFlow=500*runif(1), maxNoise=500*runif(1), obs=
   ratio <- bias[1]/bias[2]
   print(ratio)
 
-  df$Noise <- bias[1]*d1*annualsun + bias[2]*d2*annualmoon*monthly  # Add noise to tide
+  df$Noise <- bias[1]*d1*annualsun + bias[2]*d2*annualmoon*monthly #+
+   # 0.1 * log((1/(bias[1]*d1*annualsun) * 1/(bias[2]*d2*annualmoon*monthly)) )# Add noise to tide
 
   # detrend noise with godin filtered data
   hourseq <- seq(df$Time[1], df$Time[nrow(df)], by = 60*60 )
   trend <- approx(df$Time, df$Noise, hourseq)$y %>% godinFilter
   df <- df %>% mutate(Noise = Noise - approx(hourseq, trend, Time, rule = 2)$y)
-
+  #trend <- approx(df$Time, df$Noise, hourseq)$y %>% stats::filter(1/24, sides = 2)
+  #df <- df %>% mutate(Noise = Noise - trend)
   noiseratio <- max(df$Noise) / maxNoise
 
-  df$Signal <- df$Signal + ( annualsun + abs(min(annualsun) )) # add some annual bias
+  #df$Signal <- df$Signal * annualsun # add some annual bias
   df$Signal <- round( df$Signal / (max(abs(df$Signal)) / maxFlow) , 3 )
 
   if(tideInteractions)
@@ -110,13 +117,14 @@ StevesCoolRandomTS <- function(maxFlow=500*runif(1), maxNoise=500*runif(1), obs=
       eventmagnitude <- rnorm(1, mean = 0.5, sd = 0.15)
       # Clip values to ensure they are between 0 and 1
       eventmagnitude <- pmin(pmax(eventmagnitude, 0), 1)
+      eventmagnitude
     }
 
     df <- df %>% mutate(TideInteraction = ( Noise * ( 1 - signalratio ) ) - Noise ) # new noise minus noise
 
     # add lag
-    maxlag = 120 # 120 minutes
-    laggedts <- df %>% mutate(lagminutes = signalratio ^ 0.5  * maxlag) %>%
+    maxlag = 180 # 180 minutes
+    laggedts <- df %>% mutate(lagminutes = signalratio ^ 0.5  * maxlag * eventmagnitude) %>%
       mutate(Time = Time + lagminutes * 60)
 
     # lagged noise minus existing noise
@@ -146,6 +154,5 @@ StevesCoolRandomTS <- function(maxFlow=500*runif(1), maxNoise=500*runif(1), obs=
   return(df)
 
 }
-
 
 

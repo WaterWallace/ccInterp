@@ -99,7 +99,7 @@ spinterpConvert <- function(start, rate, outputInt = (1 / 24), type = "spinterp"
     #plot(yp)
   } else if (type == "schum") {
     # print("schum")
-    SchumSpline <- schumaker::Schumaker(t, cumdaily)
+    SchumSpline <- schumaker::Schumaker(t, cumdaily, Extrapolation = "Linear")
     yp <- SchumSpline$Spline(xp)
   } else if (type == "linear") {
     # Not useful to interpolate linearly
@@ -122,4 +122,5 @@ spinterpConvert <- function(start, rate, outputInt = (1 / 24), type = "spinterp"
   #plot(df)
   return(df)
 }
+
 

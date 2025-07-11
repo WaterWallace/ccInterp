@@ -6,10 +6,11 @@
 #'
 #' @param ts dataframe of posixct time (time in seconds) and an instantaneous
 #' value (per second i.e. cumecs), and optionally a quality code
-#' @param dt datatype of the input data, 1 = inst; 2 = fmean
+#' @param dt datatype of the input data, 1 = inst; 2 = fmean; 6 = insttotal
 #' default is 1 for instantaenous, the inputs can be randomly spaced in time.
 #' 2 for fmean when you are converting evenly spaced forward means such as daily
 #'  averages.
+#' 6 for rainfall, i.e. the total at this minute is 1 tip.
 #' @param Interval string or number, "Hourly", "Daily", "Monthly", "Annual", or
 #' a number of minutes.
 #' @param start a timestamp written, that can be converted to posixct.
@@ -265,3 +266,4 @@ changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
   return(newts)
 
 }
+
