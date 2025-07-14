@@ -1,7 +1,7 @@
 Package: ccInterp
 Type: Package
 Title: (C)as(c)ading (I)ntegral I(nterp)olation package for R (cci)
-Version: 0.5.8
+Version: 0.5.9
 Author: Stephen Wallace
 Maintainer: Stephen Wallace <stephen.wallace@des.qld.gov.au>
 Description: Filters a source timeseries to remove noise/tides/etc

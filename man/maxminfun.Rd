@@ -4,7 +4,7 @@
 \alias{maxminfun}
 \title{MaxMin Function}
 \usage{
-maxminfun(refx, refy, newts, option = "max", dt = 2)
+maxminfun(refx, refy, newts, option = "max", dt = 1)
 }
 \arguments{
 \item{refx}{source x input.}
@@ -15,7 +15,7 @@ maxminfun(refx, refy, newts, option = "max", dt = 2)
 
 \item{option}{"max" or "min" to return interval max or interval min.}
 
-\item{dt}{data type, 1 = inst, 2 = forward mean}
+\item{dt}{data type, 1 = inst, 2 = forward mean, 6 = insttotal}
 }
 \value{
 dataframe with newts xaxis, and a forward looking max or min of refy.

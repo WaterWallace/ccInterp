@@ -81,8 +81,7 @@ changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
   ts$Date <- as.POSIXct(ts$Date)
   inputts <- ts
 
-
-
+  # start and end times
   if (start == 0)
   {
     if (Interval == "Daily")
@@ -130,14 +129,14 @@ changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
       Interval = Interval*60
     }
   }
-
   if (end == 0) {
     end <- ts[nrow(ts), 1]
   } else {
     end <- as.POSIXct(end, origin = "1970-01-01")
   }
 
-  # set to numeric
+
+  # New time sequence
   ts <- ts %>% mutate( numDate = as.numeric(Date))
   if(Interval == "Monthly")
   {
@@ -155,11 +154,11 @@ changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
     { # override offset if outputting "inst" data
       offset <- ( Interval / 60 ) / 2
     }
-
     # new time sequence
     newintTS <- seq(start+offset*60, end , by = Interval)
   }
 
+  # accumulate (integral)
   if(dt == 1){
     # dt 1  = instantaenous inputs
 
@@ -184,9 +183,9 @@ changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
                         accum = f.accum(newintTS))
 
 
-  }else{
+  }else if(dt == 2 | dt == 3){
     stopifnot("other than dt of 1 must be interval data, i.e. daily forward mean" = max(diff(ts$numDate)) == mean(diff(ts$numDate)))
-    stopifnot("select dt of 1(inst), 2(forward mean) or 3(trailing mean)" = ( dt == 1 | dt == 2 | dt ==3 ) )
+    stopifnot("select dt of 1(inst), 2(forward mean) or 3(trailing mean) 6(inst total)" = ( dt == 1 | dt == 2 | dt ==3 | dt ==6 ) )
 
     # accumulate first
     ts <- ts %>% mutate( accum = cumsum(value * c(0,diff(numDate))))
@@ -203,21 +202,25 @@ changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
     newts <- data.frame(Date = newintTS,
                         accum = f.accum(newintTS))
 
+  }else if(dt ==6){
+    ts <- ts %>% mutate( accum = cumsum(value) )
+    newts <- data.frame(Date = newintTS,
+                        accum = approx(ts$Date, ts$accum, newintTS, method = "constant")$y)
+
+  }else{
+    stopifnot("select dt of 1(inst), 2(forward mean) or 3(trailing mean) 6(inst total)" = ( dt == 1 | dt == 2 | dt ==3 | dt ==6 ) )
   }
 
-  # add half a timestep for instantaneous
+
+  # derivative at the new interval
   if(option == "inst"){
-    # newintts
     stopifnot("Must be equal intervals for inst datatype, use fmean or total" = newintTS %>% diff %>% as.numeric() %>% mean ==
                 newintTS %>% diff %>% as.numeric() %>% median)
 
     if(instAsSpline)
     {
       newintTS <- seq(start+offset*60, end , by = Interval)
-
-      #f.spline <- splinefun(newts$Date + 0.5 * mean(diff(newts$Date)), newts$accum  ) # this would be wrong
       f.spline <- splinefun(newts$Date, newts$accum )
-      #newts$Inst <- f.spline(newintTS, deriv = 1)
       newts <- newts %>% mutate(Inst = f.spline(Date, deriv = 1))
       newts <- newts %>% dplyr::select(c(Date, Inst))
     }else{
@@ -230,33 +233,29 @@ changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
   {
     deltaT <- difftime((newts$Date), dplyr::lag(newts$Date), units= "sec") %>% as.numeric()
     newts$FMean <- c(diff(newts$accum)/deltaT[-1] ,NA )
-
     #newts$FMean <- c(diff(newts$accum)/Interval,NA ) # skw: test this works as it should
     newts <- newts %>% dplyr::select(c(Date, FMean))
 
   }else if(option == "total")
   {
-    #deltaT <- difftime((newts$Date), dplyr::lag(newts$Date), units= "sec") %>% as.numeric()
     newts$Total <- c(diff(newts$accum),NA )
-    #newts$FMean <- c(diff(newts$accum)/Interval,NA ) # skw: test this works as it should
     newts <- newts %>% dplyr::select(c(Date, Total))
-
   }else if(option == "tmean")
   {
     #this needs checking
     deltaT <- difftime((newts$Date), dplyr::lag(newts$Date), units= "sec") %>% as.numeric()
     newts$TMean <- c(NA, diff(newts$accum)/deltaT[-1] )
-    #newts$TMean <- c(NA,diff(newts$accum)/Interval )
     newts <- newts %>% dplyr::select(c(Date, TMean))
   }
   newts$Date <- as.POSIXct(newts$Date)
 
   if (length(inputts) == 3) {
-    newts <- maxminfun(inputts[, 1], inputts[, 3], newts, option = "max")
+    newts <- maxminfun(inputts[, 1], inputts[, 3], newts, option = "max", dt = dt)
   }
   newts[,2] <- round(newts[,2], decimals)
   newts <- na.omit(newts)
 
+  # start at zero
   if(option == "sum")
   {
     newts$accum <- newts$accum - newts$accum[1]
@@ -266,4 +265,5 @@ changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
   return(newts)
 
 }
+
 

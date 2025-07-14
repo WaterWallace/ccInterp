@@ -13,7 +13,7 @@
 #' @param refy source y input.
 #' @param newts target x interval i.e. hourly/daily.
 #' @param option "max" or "min" to return interval max or interval min.
-#' @param dt data type, 1 = inst, 2 = forward mean
+#' @param dt data type, 1 = inst, 2 = forward mean, 6 = insttotal
 #'
 #' @return  dataframe with newts xaxis, and a forward looking max or min of refy.
 #'
@@ -38,52 +38,43 @@
 #' lines(f.min(longts), col = "red")
 #'
 #' @export
-maxminfun <- function(refx, refy, newts, option = "max", dt = 2) {
+maxminfun <- function(refx, refy, newts, option = "max", dt = 1) {
   originalnewts <- newts
   newts <- as.data.frame(newts)
-  if (dt == 1) {
-    subtract <- (newts[2, 1] - newts[1, 1]) / 2
-    # newts<- as.numeric(newts)
-    # shift the target timeseries back by half an interval
-    # function assumes default dt of 2, which is forward means.
-    newts[, 1] <- newts[, 1] - (subtract)
+  oldts <- data.frame(refx, refy)
+
+  if(dt == 3) # trailing mean
+  {
+    offs <- median(diff(as.numeric(newts[,1])))
+    newts[,1] <- newts[,1] + offs
   }
 
-  # refx - reference x lookup
-  # refy - reference y lookup i.e. a quality code
-  # newts - a timeseries dataframe, with at least a column of timestamps
-  # option - "max" or "min"
-
-  maxfun <- function(t, y, x, option = "max") # look forward and back to pick the max (or min)
-  {
-    # function looks to either side of point x and outputs the minimum
-    f.qual0 <- approxfun(t, y, method = "constant", ties = option, f = 0, rule = 2)
-    f.qual1 <- approxfun(t, y, method = "constant", ties = option, f = 1, rule = 2)
-
-    if (option == "max") {
-      return(pmax(f.qual0(x), f.qual1(x)))
-    } else if (option == "min") {
-      return(pmin(f.qual0(x), f.qual1(x)))
+  if(dt == 1 | dt == 6) {
+    # max neighbor
+    lagged <- oldts %>% mutate(lag = lag(refy,1)) %>% mutate(lead = lead(refy,1))
+    if (option == "max"){
+      oldts$refy <- pmax(lagged$lag, lagged$lead, na.rm = TRUE)
+    }else if (option == "min"){
+      oldts$refy <- pmin(lagged$lag, lagged$lead, na.rm = TRUE)
+    }else{
+      stop("option must be min or max")
     }
   }
 
-  oldts <- data.frame(refx, refy)
-  # newts <- data.frame(Timestamp = newts ) # why did I add this?
-  # colnames(newts)[1]
-
   # Function of hourly hours
-  f.hourlyHours <- approxfun(newts[, 1], newts[, 1], method = "constant")
+  f.hourlyHours <- approxfun(newts[, 1], newts[, 1], method = "constant", f = 0, rule = 2)
   # which hour does this belong
   oldts <- cbind(oldts, hour = f.hourlyHours(oldts[, 1]))
   # add max QC for period to df
-  newts <- cbind(newts, QC = maxfun(oldts[, 3], oldts[, 2], newts[, 1], option = option))
+  newts <- cbind(newts, QC = maxfun(oldts$hour, oldts[, 2], newts[, 1], option = option))
 
-  # f.newts <- approxfun(newts, method="constant")
-  # return(f.newts)
-
-  if (dt == 1) {
-    newts[, 1] <- newts[, 1] + subtract
+  if(dt == 3) # trailing mean
+  {
+    newts[,1] <- newts[,1] - offs
   }
 
   return(newts)
 }
+
+
+
