@@ -28,43 +28,67 @@
 StevesCoolRandomTS <- function(maxFlow=500*runif(1), maxNoise=500*runif(1), obs=1000, smoothed=TRUE, randomtimes = FALSE, tideInteractions = TRUE, d1d2ratio = NULL, eventmagnitude = NULL)
 {
 
-  end <- Sys.Date() - obs/24
-  start <- runif(1, min=end-2*365, max=end)
+  end <- Sys.Date()
+  start <- end - obs/24
 
-  # make some random data
-  randomMinutes <- rnorm(obs, mean = 60, sd = 30) # create 1000 random intervals
-  randomMinutes <- randomMinutes[randomMinutes > 10] # exclude intervals less than 10 minutes
-  randomMinutes <- as.POSIXct(cumsum(randomMinutes)*60, origin=as.Date(start, origin="1970-01-01"))
+  # hourly
+  hourlyseq <- seq(as.POSIXct(start), as.POSIXct(end), by = 60*60)
 
-  #t <- as.numeric( randomMinutes ) /60/60/24
-  #randomannualtime <- runif(1,0,1) * 365
-  #annualsun <- sin( ( 1/365.25 ) * 2 * pi *  t + randomannualtime ) + 1 # >0
+  posnumbers <- 0
+  while(posnumbers < (obs/4)){
+    # build a data frame of times and values
+    df <- data.frame(Time = hourlyseq,
+                     Signal = cumsum(rnorm(length(hourlyseq), mean = 0, sd = 1)) *
+                       cumsum(rnorm(length(hourlyseq), mean = 0, sd = 1)) #*
+                     #cumsum(rnorm(length(hourlyseq), mean = 0, sd = 1))^2
+    )
 
-  # build a data frame of times and values
-  df <- data.frame(Time = randomMinutes,
-                   Signal = cumsum(rnorm(length(randomMinutes), mean = 0, sd = 1)) *
-                     cumsum(rnorm(length(randomMinutes), mean = 0, sd = 1)) *
-                     cumsum(rnorm(length(randomMinutes), mean = 0, sd = 1))^2
-  )
+    # zero any negative numbers
+    choppedends <- df$Signal
+    startend <- as.integer(obs*1/5)
+    finishend <- as.integer(obs*4/5)
 
-  df$Signal <- ( df$Signal / max(df$Signal) )
+    choppedends[1:startend] <- 0
+    choppedends[finishend:obs] <- 0
 
-  df$Signal <- df$Signal * c(0, df$Signal[-nrow(df)])  # autocorrelate
-  df$Signal <- round(df$Signal, digits = 2)
-  df$Signal <- df$Signal * c(0, df$Signal[-nrow(df)])
+    posnumbers <- sum( choppedends > 0 )
+  }
+
+  df$Signal[df$Signal < 0] <- 0
+
+  #df$Signal <- ( df$Signal / max(df$Signal) )
+
+  df <- df %>% mutate(Signal2 = Signal + lead(Signal)) %>%
+    mutate(Signal = Signal2 * lead(Signal,2)) %>%
+    dplyr::select(-Signal2)
+
+  #df$Signal <- df$Signal * c(0, df$Signal[-nrow(df)])  # autocorrelate
+  #df$Signal <- round(df$Signal, digits = 2)
+  #df$Signal <- df$Signal * c(0, df$Signal[-nrow(df)])
+
+
 
   if(smoothed)
   {
-    hourly <- changeInterval(data.frame(df$Time, df$Signal), Interval = "Hourly", option="inst")
-    godin <- godinFilter(hourly$Inst)
+    #hourly <- changeInterval(data.frame(df$Time, df$Signal), Interval = "Hourly", option="inst")
+    #godin <- godinFilter(hourly$Inst)
 
-    if(!randomtimes){
-      df <- data.frame(Time = hourly$Date, Signal = godin)
-    }else{
-      df <- data.frame(Time = df$Time, Signal = approx(hourly$Date, godin, df$Time)$y)
-    }
+    # 24 hr smoothing filter
+    n_hours <- 24
+    filter_coeffs <- rep(1 / n_hours, n_hours)
+    df$Signal <- stats::filter(df$Signal, filter = filter_coeffs, sides = 2)
     df <- na.omit(df)
+  }
+  if(randomtimes){
 
+    teminseq <- seq(as.POSIXct(start), as.POSIXct(end), by = 10*60)
+    randomtimestamps <- data.frame(times = teminseq,
+                                   offset = rnorm(length(teminseq), mean = 5, sd = 5)) %>%
+      dplyr::filter(offset > 1 & offset < 10) %>%
+      mutate(times = times - 60*offset) %>% arrange(times) %>% pull(times)
+
+    df <- data.frame(Time = randomtimestamps, Signal = approx(df$Time, df$Signal, randomtimestamps)$y)
+    df <- na.omit(df)
   }
 
   t <- as.numeric( df[,1] ) /60/60/24
@@ -81,78 +105,92 @@ StevesCoolRandomTS <- function(maxFlow=500*runif(1), maxNoise=500*runif(1), obs=
   randomannualtime <- runif(1,0,1) * 365
   monthly <- sin( ( 1/29.53 ) * 2*pi * t + randomannualtime )  # monthly cycle is 29.5
 
-  if(is.null(d1d2ratio) | length(d1d2ratio) != 2)
-  {
-    bias <- rnorm(2,1,0.16)
-  }else{
-    bias <- d1d2ratio
-  }
+  #if(is.null(d1d2ratio) | length(d1d2ratio) != 2)
+  #{
+  bias <- rnorm(2,1,0.16)
+  #}else{
+  #  bias <- d1d2ratio
+  #}
   ratio <- bias[1]/bias[2]
   print(ratio)
 
   df$Noise <- bias[1]*d1*annualsun + bias[2]*d2*annualmoon*monthly #+
-   # 0.1 * log((1/(bias[1]*d1*annualsun) * 1/(bias[2]*d2*annualmoon*monthly)) )# Add noise to tide
+  # 0.1 * log((1/(bias[1]*d1*annualsun) * 1/(bias[2]*d2*annualmoon*monthly)) )# Add noise to tide
 
   # detrend noise with godin filtered data
   hourseq <- seq(df$Time[1], df$Time[nrow(df)], by = 60*60 )
-  trend <- approx(df$Time, df$Noise, hourseq)$y %>% godinFilter
+
+  n_hours <- 72
+  filter_coeffs <- rep(1 / n_hours, n_hours)
+  trend <- approx(df$Time, df$Noise, hourseq)$y %>% stats::filter(filter = filter_coeffs, sides = 2)
+
   df <- df %>% mutate(Noise = Noise - approx(hourseq, trend, Time, rule = 2)$y)
   #trend <- approx(df$Time, df$Noise, hourseq)$y %>% stats::filter(1/24, sides = 2)
   #df <- df %>% mutate(Noise = Noise - trend)
-  noiseratio <- max(df$Noise) / maxNoise
+  plot(df$Signal)
 
-  #df$Signal <- df$Signal * annualsun # add some annual bias
-  df$Signal <- round( df$Signal / (max(abs(df$Signal)) / maxFlow) , 3 )
+  df <- df %>% mutate(Noise = round( Noise * ( maxNoise / max(Noise)), 3 )) %>%
+    mutate( Signal = round( Signal * ( maxFlow / max(Signal)) , 3 ))
+
 
   if(tideInteractions)
   {
 
     # dampen tide during events
-    df <- df %>% mutate(signalratio = Signal / ( max(df$Signal) - min(df$Signal) ) ) %>%
-      mutate(signalratio = signalratio - min(signalratio))
+    df <- df %>% mutate(signalratio = Signal / ( max(df$Signal) - min(df$Signal) ) ) #%>%
+    #mutate(signalratio = signalratio - min(signalratio))
+
+    range(df$signalratio)
+
+
+    100 / (1000-500)
 
     if(is.null(eventmagnitude))
     {
-      # Generate 1000 random numbers from a normal distribution with mean 0.5 and sd 0.15
-      eventmagnitude <- rnorm(1, mean = 0.5, sd = 0.15)
-      # Clip values to ensure they are between 0 and 1
-      eventmagnitude <- pmin(pmax(eventmagnitude, 0), 1)
-      eventmagnitude
+      eventmagnitude <- rnorm(1, mean = 0.5, sd = 1/6)
+      eventmagnitude <- min(max(eventmagnitude, 0), 1)
     }
 
-    df <- df %>% mutate(TideInteraction = ( Noise * ( 1 - signalratio ) ) - Noise ) # new noise minus noise
+    #df <- df %>% mutate(newnoise = Noise * (1-signalratio) ) %>% # it's the completement of the signal ratio
+    #  mutate(TideInteraction = newnoise - Noise) %>% # it's a negative influence, so subtract the original noise %>%
+    #  dplyr::select(-newnoise)
+
+    df <- df %>% mutate(signalratio = signalratio * eventmagnitude)
 
     # add lag
     maxlag = 180 # 180 minutes
-    laggedts <- df %>% mutate(lagminutes = signalratio ^ 0.5  * maxlag * eventmagnitude) %>%
-      mutate(Time = Time + lagminutes * 60)
 
-    # lagged noise minus existing noise
-    laggednoise <- approx(laggedts$Time, (laggedts$Noise+laggedts$TideInteraction), df$Time, rule = 2)$y
-    laggdiff <- laggednoise - (df$Noise+df$TideInteraction)
+    laggedts <- df %>% mutate(lagminutes = signalratio ^ 0.5  * maxlag) %>%
+      mutate(Time = Time + lagminutes * 60) %>%
+      mutate(TideInteraction = Noise * ( 1 - signalratio ))
 
-    df$TideInteraction <- eventmagnitude * df$signalratio * ( df$TideInteraction + laggdiff ) %>% round(3)
+    # add the lagged interacted tide to original data
+    # And subtract the original noise to get the mumeric offset
+    df$TideInteraction <- approx(laggedts$Time, laggedts$TideInteraction, df$Time)$y - df$Noise
 
     df <- df %>% dplyr::select(-signalratio)
-    df$TideInteraction <- df$TideInteraction / noiseratio
+
     df$eventmagnitude <- eventmagnitude
+
 
   }
 
-  # round and normalise to desired values
-  df <- df %>% mutate(Noise = round( Noise / noiseratio, 3 ))
 
   noise <- rnorm(length(t), mean = 0, sd = maxNoise/100)  # Standard Gaussian noise
   df$Noise <- df$Noise + noise
   df$d1d2ratio <- ratio
 
   # add some white noise
-  df$Signal <- df$Signal + rnorm(length(t), mean = 0.01, sd = maxFlow/10000)  # Standard Gaussian noise
+  #df$Signal <- df$Signal + rnorm(length(t), mean = 0.01, sd = maxFlow/10000)  # Standard Gaussian noise
   df$Signal[df$Signal < 0] <- 0
 
+  plot(df$Signal)
 
   return(df)
 
 }
+
+
+
 
 

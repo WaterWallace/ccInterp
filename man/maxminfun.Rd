@@ -4,7 +4,7 @@
 \alias{maxminfun}
 \title{MaxMin Function}
 \usage{
-maxminfun(refx, refy, newts, option = "max", dt = 1)
+maxminfun(refx, refy, newts, option = "max", dt = 2, inputdt = 1)
 }
 \arguments{
 \item{refx}{source x input.}
@@ -18,7 +18,7 @@ maxminfun(refx, refy, newts, option = "max", dt = 1)
 \item{dt}{data type, 1 = inst, 2 = forward mean, 6 = insttotal}
 }
 \value{
-dataframe with newts xaxis, and a forward looking max or min of refy.
+vector of interpolated ref data at time of newts
 }
 \description{
 function for looking up the maximum y-value in a reference dataset, for a time at time of newts

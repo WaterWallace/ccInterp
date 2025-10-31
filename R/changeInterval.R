@@ -67,6 +67,7 @@
 #' lines(hourlyInst, col = "orange")
 #' @export
 #'
+#'
 changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
                            end = 0, offset = 0, option = "fmean",
                            rounded = TRUE, decimals = 3)
@@ -157,6 +158,17 @@ changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
     # new time sequence
     newintTS <- seq(start+offset*60, end , by = Interval)
   }
+  if(option == "resample")
+  {
+    newts <- data.frame(Date = newintTS,
+                        Inst = approx(ts$Date, ts$value, newintTS)$y )
+
+    if (length(inputts) == 3) {
+      newts$QC <- maxminfun(inputts[, 1], inputts[, 3], newts$Date, option = "max")[,2]
+    }
+    return(newts)
+  }
+
 
   # accumulate (integral)
   if(dt == 1){
@@ -250,7 +262,17 @@ changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
   newts$Date <- as.POSIXct(newts$Date)
 
   if (length(inputts) == 3) {
-    newts <- maxminfun(inputts[, 1], inputts[, 3], newts, option = "max", dt = dt)
+
+    if(option == "fmean"){
+      outputdt <- 2
+    }else if(option == "tmean"){
+      outputdt <- 3
+    }else if(option == "total"){
+      outputdt <- 6
+    }else{
+      outputdt <- 1
+    }
+    newts$QC <- maxminfun(inputts[, 1], inputts[, 3], newts, option = "max", dt = outputdt, inputdt = dt)
   }
   newts[,2] <- round(newts[,2], decimals)
   newts <- na.omit(newts)
@@ -265,5 +287,8 @@ changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
   return(newts)
 
 }
+
+
+
 
 

@@ -15,7 +15,7 @@
 #' @param option "max" or "min" to return interval max or interval min.
 #' @param dt data type, 1 = inst, 2 = forward mean, 6 = insttotal
 #'
-#' @return  dataframe with newts xaxis, and a forward looking max or min of refy.
+#' @return  vector of interpolated ref data at time of newts
 #'
 #' @examples
 #'
@@ -38,18 +38,26 @@
 #' lines(f.min(longts), col = "red")
 #'
 #' @export
-maxminfun <- function(refx, refy, newts, option = "max", dt = 1) {
+maxminfun <- function(refx, refy, newts, option = "max", dt = 2, inputdt = 1) {
+  # dt is output datatrans, default 2 (forward mean)
+  # assuming you're inputting instantaenous data
   originalnewts <- newts
   newts <- as.data.frame(newts)
   oldts <- data.frame(refx, refy)
 
-  if(dt == 3) # trailing mean
+  # outputting instantaneous data isn't really possible, it's just a forward
+  #mean that has been offset in time.
+  if (dt == 1) {
+    offs <- median(diff(as.numeric(newts[,1])))
+    newts[,1] <- newts[,1] - offs / 2
+  }
+  if(inputdt == 3) # trailing mean
   {
     offs <- median(diff(as.numeric(newts[,1])))
     newts[,1] <- newts[,1] + offs
   }
 
-  if(dt == 1 | dt == 6) {
+  if(inputdt == 1 | inputdt == 6) {
     # max neighbor
     lagged <- oldts %>% mutate(lag = lag(refy,1)) %>% mutate(lead = lead(refy,1))
     if (option == "max"){
@@ -60,20 +68,29 @@ maxminfun <- function(refx, refy, newts, option = "max", dt = 1) {
       stop("option must be min or max")
     }
   }
+  targetfloor <- approx(newts[,1], lag(newts[,1],1), oldts[,1], f=1, method = "constant", rule = 2)$y %>% as.POSIXct() #floor of target timeseries
+  targetceiling <- approx(newts[,1], lead(newts[,1],1), oldts[,1], f=0, method = "constant", rule = 2)$y %>% as.POSIXct() #ceiling of target timeseries
 
-  # Function of hourly hours
-  f.hourlyHours <- approxfun(newts[, 1], newts[, 1], method = "constant", f = 0, rule = 2)
+  if(dt == 1 | dt == 6 | dt == 2)
+  {
+    targethour <- targetfloor
+  }else if(dt == 3)
+  {
+    targethour <- targetceiling
+  }
+
   # which hour does this belong
-  oldts <- cbind(oldts, hour = f.hourlyHours(oldts[, 1]))
-  # add max QC for period to df
-  newts <- cbind(newts, QC = maxfun(oldts$hour, oldts[, 2], newts[, 1], option = option))
+  oldts$hour <- targethour
 
-  if(dt == 3) # trailing mean
+  # add max QC for period to df
+  QC <- maxfun(oldts$hour, oldts[, 2], newts[, 1], option = option)
+
+  if(inputdt == 3) # trailing mean
   {
     newts[,1] <- newts[,1] - offs
   }
 
-  return(newts)
+  return(QC)
 }
 
 

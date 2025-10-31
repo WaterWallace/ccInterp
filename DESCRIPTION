@@ -1,7 +1,7 @@
 Package: ccInterp
 Type: Package
 Title: (C)as(c)ading (I)ntegral I(nterp)olation package for R (cci)
-Version: 0.5.9
+Version: 0.5.11
 Author: Stephen Wallace
 Maintainer: Stephen Wallace <stephen.wallace@des.qld.gov.au>
 Description: Filters a source timeseries to remove noise/tides/etc
@@ -20,4 +20,4 @@ Imports: dplyr, zoo, pracma, schumaker, matrixStats, signal, stats, lubridate
 Suggests: 
 NeedsCompilation: no
 Packaged: 2022-12-06 07:41:56 UTC; Bill
-Depends: R (>= 4.2.0)
+Depends: R (>= 4.2.0), dplyr, zoo, pracma, schumaker, matrixStats, signal, stats, lubridate
