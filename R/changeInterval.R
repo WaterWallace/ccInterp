@@ -164,7 +164,7 @@ changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
                         Inst = approx(ts$Date, ts$value, newintTS)$y )
 
     if (length(inputts) == 3) {
-      newts$QC <- maxminfun(inputts[, 1], inputts[, 3], newts$Date, option = "max")[,2]
+      newts$QC <- maxminfun(inputts[, 1], inputts[, 3], newts$Date, option = "max")
     }
     return(newts)
   }
@@ -287,8 +287,4 @@ changeInterval <- function(ts, dt = 1, Interval = "Daily", start = 0,
   return(newts)
 
 }
-
-
-
-
 
