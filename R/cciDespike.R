@@ -41,20 +41,46 @@
 #' points(dfoutliers, col = "blue", pch = 4)
 #'
 #' @export
-cciDespike <- function(spiky, hoursAvg = 3, stdevs = 2, doPlot = FALSE)
+cciDespike <- function(spiky, hoursAvg = 3, stdevs = 2, rocstdev = 3, doPlot = FALSE, lonelyPoints = 4, spikeaction = "omit")
 {
+  #savedspiky <- spiky
+  # spiky <- savedspiky
+  # spiky <- LRTDatasaved
+  # spiky <- as.data.frame(spiky)
+  spiky$tdiff <- c(diff(as.numeric(spiky[,1])),0) / 60 / 60
+  #names(spiky)[1] <- "ts"
+  spiky$Filter <- 0
+
+  #nrow(spiky)
+
+  # remove lonely points
+  lonelypoints <- spiky %>% dplyr::mutate(tdifflag = lag(tdiff,1,0)) %>%
+  mutate(mindiff = pmin(tdiff,tdifflag))
+
+  numlonelypoints <- lonelypoints %>% dplyr::filter(mindiff >= lonelyPoints)
+  if(nrow(numlonelypoints) > 0)
+  {
+    lonelypoints[lonelypoints$mindiff >= lonelyPoints,]$Filter <- 2
+  }
+  spiky <- lonelypoints %>% dplyr::select(-c(tdiff,tdifflag,mindiff))
 
   f.spline <- splinefun(spiky[,1], spiky[,2])
   spiky$dydx <- f.spline(spiky[,1], deriv = 1)
+  #spiky$Filter <- 0
 
-  spiky$Filter <- 0
-  spiky$Filter[ abs( spiky$dydx ) > sd(spiky$dydx) * 3  ] <- 1
+  if(!is.null(rocstdev))
+  {
+    spiky$Filter[ abs( spiky$dydx ) > sd(spiky$dydx) * rocstdev  ] <- 2
+  }
 
-  removedPoints <- spiky[spiky$Filter == 1,]
+  #cbind(xts(spiky$Value, spiky$ts),
+  #      xts(spiky$Filter, spiky$ts)) %>% dygraph()
 
-  spiky <- spiky[spiky$Filter == 0,]
 
-  spinterpData <- ccInterpFilter(data.frame(spiky[,1], spiky[,2]), hoursAvg, centred=FALSE)
+  #removedPoints <- spiky[spiky$Filter == 1,]
+  #spiky[spiky$Filter == 0,]
+
+  spinterpData <- ccInterpFilter(data.frame(spiky[spiky$Filter == 0,1], spiky[spiky$Filter == 0,2]), hoursAvg, centred=FALSE)
 
   # 95% confidence
   stdev <- rowSds(as.matrix(spinterpData[2:(length(spinterpData) -1 )]  ))
@@ -62,18 +88,34 @@ cciDespike <- function(spiky, hoursAvg = 3, stdevs = 2, doPlot = FALSE)
   spinterpConfi <- cbind(spinterpConfi, upper = spinterpData$avg + stdevs*stdev ) # two standard deviations
   spinterpConfi <- cbind(spinterpConfi, lower = spinterpData$avg - stdevs*stdev ) # two standard deviations
 
-  f.upper <- approxfun(spinterpConfi$spinterpData.Date, spinterpConfi$upper)
-  f.lower <- approxfun(spinterpConfi$spinterpData.Date, spinterpConfi$lower)
+  f.upper <- approxfun(spinterpConfi$spinterpData.Date, spinterpConfi$upper, rule = 2)
+  f.lower <- approxfun(spinterpConfi$spinterpData.Date, spinterpConfi$lower, rule = 2)
 
-  spinterpDespiked <- spiky[(spiky[,2] <= f.upper(spiky[,1]) & spiky[,2] >= f.lower(spiky[,1])) ,]
-  removedPoints <- rbind( removedPoints,
-                          spiky[(spiky[,2] > f.upper(spiky[,1]) | spiky[,2] < f.lower(spiky[,1])),])
+  spiky <- spiky %>% na.omit(spiky)
+
+  #spikysaved <- spiky
+  #spiky <- spikysaved
+  spiky$outofrange <- (spiky[,2] > f.upper(spiky[,1]) | spiky[,2] < f.lower(spiky[,1]))
+  spiky <- spiky %>% mutate(Filter = ifelse(Filter == 0 & outofrange, 1, Filter)) %>%
+    dplyr::select(-outofrange)
+
+  #cbind(xts(spiky$Value, spiky$ts),
+  #      xts(spiky$Filter, spiky$ts)) %>% dygraph()
+  #xts(spiky$Value, spiky$ts) %>% dygraph
+
+  #removedPoints <- rbind( removedPoints,
+  #                        spiky[(spiky[,2] > f.upper(spiky[,1]) | spiky[,2] < f.lower(spiky[,1])),])
 
 
-  spinterpDespiked <- spinterpDespiked %>% select(-c(Filter, dydx))
-  removedPoints <- removedPoints %>% select(-c(Filter, dydx))
 
-  #f.spinterpDespiked <- spinterpDespiked %>% na.omit %>% approxfun()
+  #nrow(removedPoints) + nrow(spinterpDespiked)
+
+  #spinterpDespiked <- spinterpDespiked %>% select(-dydx)
+  #removedPoints <- removedPoints %>% select(-dydx)
+  #spiky <-
+
+  # how far the "spike" is away from the limits
+  removedPoints <- spiky %>% dplyr::filter(Filter == 1)
   removedPoints$resid <- pmax(
     removedPoints[,2] - f.upper(removedPoints[,1]),
     f.lower(removedPoints[,1]) - removedPoints[,2]
@@ -81,31 +123,46 @@ cciDespike <- function(spiky, hoursAvg = 3, stdevs = 2, doPlot = FALSE)
 
   removedPoints <- na.omit(removedPoints)
 
-  SixHourlyResiduals <- changeInterval(data.frame(removedPoints[,1], removedPoints$resid), Interval = 6*60)
-  SixHourlyResiduals$SD <- rollapply(SixHourlyResiduals$FMean,width=10,FUN=sd,fill=NA,align="c")
 
+
+
+  SixHourlyResiduals <- changeInterval(data.frame(removedPoints[,1], removedPoints$resid), Interval = hoursAvg*2*60, option = "tmean")
+  SixHourlyResiduals$SD <- rollapply(SixHourlyResiduals$TMean,width=10,FUN=sd,fill=NA,align="c") * stdevs
   f.SD <- approxfun(SixHourlyResiduals$Date, SixHourlyResiduals$SD, na.rm=TRUE, rule=2)
 
-  removedPoints <- removedPoints[ abs(removedPoints$resid) > stdevs * f.SD(removedPoints[,1]), ]
+  removedPoints <- removedPoints[removedPoints$resid > f.SD(removedPoints[,1]),]
 
-  if(doPlot)
+  if(FALSE)
   {
-    plot(spiky[,1], spiky[,2])
+    plotspiky <- spiky %>% dplyr::filter(ts > "2021-06-11 00:00" & ts < "2021-09-09 00:00")
+    plotspiky <- spiky
+    #lenspiky <- nrow(spiky)
+    #plot(spiky[(lenspiky-200):lenspiky,1], spiky[(lenspiky-200):lenspiky,2])
+    plot(plotspiky[,1], plotspiky[,2])
+    #spiky
 
-    upperLine <- data.frame( x = rev(spiky[,1]),
-                             y = rev(f.upper(spiky[,1])+stdevs * f.SD(spiky[,1]) )
+    upperLine <- data.frame( x = rev(plotspiky[,1]),
+                             y = rev(f.upper(plotspiky[,1]) + f.SD(plotspiky[,1]) )
     )
-    bottomLine <- data.frame(x = spiky[,1],
-                             y = f.lower(spiky[,1])-stdevs * f.SD(spiky[,1])
+    bottomLine <- data.frame(x = plotspiky[,1],
+                             y = f.lower(plotspiky[,1]) - f.SD(plotspiky[,1])
     )
+
+    cbind(
+      xts(spiky$Value, spiky$ts),
+      xts(removedPoints$Value, removedPoints$ts),
+      xts(upperLine$y, upperLine$x),
+      xts(bottomLine$y, bottomLine$x)
+    ) %>% dygraph
+
     bigshape <- rbind(bottomLine, upperLine)
 
     #
-    upperLine <- data.frame( x = rev(spiky[,1]),
-                             y = rev(f.upper(spiky[,1]) )
+    upperLine <- data.frame( x = rev(plotspiky[,1]),
+                             y = rev(f.upper(plotspiky[,1]) )
     )
-    bottomLine <- data.frame(x = spiky[,1],
-                             y = f.lower(spiky[,1])
+    bottomLine <- data.frame(x = plotspiky[,1],
+                             y = f.lower(plotspiky[,1])
     )
     shape <- rbind(bottomLine, upperLine)
 
@@ -119,5 +176,32 @@ cciDespike <- function(spiky, hoursAvg = 3, stdevs = 2, doPlot = FALSE)
 
   }
 
-  return (spiky[!spiky[,1] %in% removedPoints[,1],] %>% dplyr::select( -c(dydx, Filter)))
+  spiky <- spiky %>% mutate(spike = ifelse(Filter > 1, "spike","OK")) %>%
+    mutate(spike = ifelse(.[[1]] %in% removedPoints[,1], "spike",spike))
+
+
+  #spiky$spike <- ifelse(spiky[,1] %in% removedPoints[,1], "spike",spike)
+  spiky <- spiky %>% dplyr::select( -c(dydx, Filter) )
+
+
+  if(spikeaction == "code")
+  {
+      return(spiky)
+  }else if(spikeaction == "infill")
+  {
+    gooddata <- spiky %>% dplyr::filter(spike == "OK")
+    f.gooddata <- approxfun(gooddata[,1],gooddata[,2])
+    spiky[spiky$spike == "spike",][,2] <- f.gooddata(spiky[spiky$spike == "spike",][,1])
+    return(spiky %>% dplyr::select(-spike))
+  }else if(spikeaction == "omit")
+  {
+    return ( spiky %>% dplyr::filter(spike == "OK") %>% dplyr::select(-spike))
+  }
 }
+
+
+
+
+
+
+

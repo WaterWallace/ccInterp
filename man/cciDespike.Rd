@@ -4,7 +4,15 @@
 \alias{cciDespike}
 \title{cci Despkie}
 \usage{
-cciDespike(spiky, hoursAvg = 3, stdevs = 2, doPlot = FALSE)
+cciDespike(
+  spiky,
+  hoursAvg = 3,
+  stdevs = 2,
+  rocstdev = 3,
+  doPlot = FALSE,
+  lonelyPoints = 4,
+  spikeaction = "omit"
+)
 }
 \arguments{
 \item{spiky}{dataframe of posixct time (time in seconds) and an instantaneous value (per second i.e. cumecs)}

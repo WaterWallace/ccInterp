@@ -25,6 +25,8 @@
 #'  lines(rough$Time, rough$Signal+rough$Noise, col='red')
 #'
 #' @export
+#'
+#'
 StevesCoolRandomTS <- function(maxFlow=500*runif(1), maxNoise=500*runif(1), obs=1000, smoothed=TRUE, randomtimes = FALSE, tideInteractions = TRUE, d1d2ratio = NULL, eventmagnitude = NULL)
 {
 
